@@ -10,6 +10,7 @@
 - Retain imported material units and density; clear stale conversions for review and preserve manual quantities. Review legacy imports that lack conversion history.
 - Preserve search locations and the previous inventory after a failed scan, and record the failed attempt separately.
 - Include the complete scan/transfer/consent workflow in packaged desktop checks.
+- Keep model results visible alongside location matches at the minimum window size.
 
 Rescan after upgrading to index folder and archive names. Source models remain unchanged unless a reviewed transfer or new-copy export is confirmed.
 

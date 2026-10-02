@@ -227,6 +227,26 @@ const { fixture, zip } = require("./helpers.cjs");
     await page
       .getByText("25 matching folders and archives", { exact: true })
       .waitFor();
+    await app.evaluate(({ BrowserWindow }) =>
+      BrowserWindow.getAllWindows()
+        .find((w) => w.isVisible())
+        .setSize(1000, 680),
+    );
+    await page.waitForFunction(() => window.innerWidth <= 1000);
+    const minimumModelArea = await page
+      .locator(".table-area")
+      .evaluate((el) => el.getBoundingClientRect().height);
+    assert.ok(
+      minimumModelArea >= 100,
+      `Folder matches must leave model results usable at minimum size: ${minimumModelArea}px`,
+    );
+    await page.screenshot({ path: "artifacts/search-names-minimum.png" });
+    await app.evaluate(({ BrowserWindow }) =>
+      BrowserWindow.getAllWindows()
+        .find((w) => w.isVisible())
+        .setSize(1510, 950),
+    );
+    await page.waitForFunction(() => window.innerWidth > 1400);
     await app.evaluate(({ shell }) => {
       global.scoutLocations = [];
       shell.openPath = async (file) => {

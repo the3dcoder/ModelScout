@@ -536,6 +536,15 @@ select {
   gap: 10px;
   padding: 10px;
 }
+@media (max-width: 1180px) {
+  .location-matches {
+    max-height: min(145px, 21vh);
+    margin-bottom: 8px;
+  }
+  .location-heading .tiny {
+    display: none;
+  }
+}
 table {
   border-collapse: collapse;
   width: 100%;
