@@ -36,6 +36,7 @@ export function SearchTools({ query, onFilter, tags, onSave }) {
         </button>
         {(chips.length > 0 ||
           query.search ||
+          query.searchScope !== "name" ||
           query.ext ||
           query.collection) && (
           <button
@@ -43,6 +44,8 @@ export function SearchTools({ query, onFilter, tags, onSave }) {
             onClick={() =>
               onFilter({
                 search: "",
+                searchScope: "name",
+                tagMode: "all",
                 ext: "",
                 category: "",
                 kind: "",

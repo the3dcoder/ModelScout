@@ -180,12 +180,22 @@ else
       )
         throw new Error("Choose up to 50 search roots.");
       job = new AbortController();
+      const previousScan = catalog.setting("lastScan");
       thumbnails.stop();
       plan = null;
       scan(options, catalog, job.signal, progress)
         .catch((e) => {
           catalog.finishScan(true);
-          const state = { running: false, phase: "failed", message: e.message };
+          const state = {
+            ...previousScan,
+            roots: previousScan?.roots || options.roots,
+            attemptedRoots: options.roots,
+            running: false,
+            phase: "failed",
+            message: e.message,
+            errors: [{ path: options.roots.join(", "), message: e.message }],
+            errorCount: 1,
+          };
           catalog.setting("lastScan", state);
           progress(state);
         })
@@ -199,6 +209,23 @@ else
       return true;
     });
     handle("query", (options) => catalog.query(options));
+    handle("revealLocation", async (file) => {
+      const location = catalog.location(file);
+      if (!location)
+        throw new Error("Location is no longer in the catalog. Rescan.");
+      const stat = await fsp.lstat(location.path);
+      if (
+        stat.isSymbolicLink() ||
+        (location.kind === "folder" ? !stat.isDirectory() : !stat.isFile())
+      )
+        throw new Error("Location changed. Rescan before opening it.");
+      if (location.kind === "archive") shell.showItemInFolder(location.path);
+      else {
+        const error = await shell.openPath(location.path);
+        if (error) throw new Error(error);
+      }
+      return true;
+    });
     handle("stats", () => catalog.stats());
     handle("notices", async () => ({
       summary: await fsp.readFile(

@@ -40,6 +40,7 @@ const names = [
   "exportCostProfile",
   "importGcodeCost",
   "saveCostEstimate",
+  "revealLocation",
   "costEstimate",
   "meshAnalyze",
   "meshPrepare",

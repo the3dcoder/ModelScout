@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.4.1
+
+- Search filenames by default, with explicit path and all-details scopes retained in saved searches, selection, and CSV exports.
+- List directly matching folders and ZIP/7z/RAR names separately, with pagination and open/reveal controls. Archive contents remain opt-in.
+- Match accented letter case in filenames and location names, while treating wildcard characters literally.
+- Prevent fast duplicate checks and scans from overwriting completed backend progress with a running state.
+- Use the same bounded, fingerprint-checked G-code import for selected files and the file picker, including large ordinary files.
+- Retain imported material units and density; clear stale conversions for review and preserve manual quantities. Review legacy imports that lack conversion history.
+- Preserve search locations and the previous inventory after a failed scan, and record the failed attempt separately.
+- Include the complete scan/transfer/consent workflow in packaged desktop checks.
+- Keep model results visible alongside location matches at the minimum window size.
+
+Rescan after upgrading to index folder and archive names. Source models remain unchanged unless a reviewed transfer or new-copy export is confirmed.
+
 ## 0.4.0
 
 - Compare matching STL, OBJ, and PLY triangle geometry across names and formats, separately from exact file duplicates.

@@ -6,7 +6,7 @@ Search folders or drives, browse a cached gallery, keep multi-part projects toge
 
 ## Run it
 
-Use Windows 10/11 x64. Build the release ZIP with the commands below, or download a published build when one is available under [Releases](https://github.com/the3dcoder/ModelScout/releases). Extract the complete ZIP and run **Model-Scout-0.4.0.exe**. No installer is required. The current build is unsigned.
+Use Windows 10/11 x64. Build the release ZIP with the commands below, or download a published build when one is available under [Releases](https://github.com/the3dcoder/ModelScout/releases). Extract the complete ZIP and run **Model-Scout-0.4.1.exe**. No installer is required. The current build is unsigned.
 
 The portable executable stores its catalog, thumbnails, profiles, and transfer logs in `%APPDATA%\Model Scout`. Back up that folder while the app is closed if you want to preserve your library metadata. Source models stay in their original folders until you confirm a move.
 
@@ -20,7 +20,7 @@ npm start
 ## Organize a library
 
 1. Add search folders or drives. ZIP scanning is optional; 7z and RAR additionally require a local [7-Zip installation](https://www.7-zip.org/).
-2. Search names, paths, tags, notes, and categories. Combine tags with all/any/exclude filters, mark favorites, and save searches.
+2. Search filenames by default, without inheriting matches from parent folders or archives. Matching folder and ZIP/7z/RAR names appear separately; their contents are not included automatically. Choose **Paths** or **All file details** to search broader fields explicitly. Combine tags with all/any/exclude filters, mark favorites, and save searches.
 3. Switch between the list and gallery. Thumbnails are generated for visible cards and cached; **Prepare this page** is an explicit background action.
 4. Select related files and choose **Collection**. Keep creator, source link, license notes, and project notes with the set. One file can belong to several collections. Membership survives rescans; unavailable files are counted separately.
 5. Run **Check duplicates**. Exact matches use SHA-256 after size filtering. Choose a keeper and review moving extras to a separate folder.
@@ -28,6 +28,8 @@ npm start
 7. Choose **Copy / move selected**, set a destination, and review the file-by-file plan. Existing files are never overwritten. Every copy is verified before a moved source is removed.
 
 Category organization retains the original search-root folder, subfolders, and filenames. Collections are virtual groups, so adding a file to one does not move it. After an in-app move, scan the destination to see that file again with its collection, tags, favorites, notes, and saved cost estimate. The estimate retains its original fingerprint and may need review.
+
+Search is insensitive to letter case, including accented names. Quoted phrases and multiple words are supported; `%` and `_` are literal characters. Folder/archive matches have their own pagination and open/reveal controls. File filters and bulk selection/export apply to model results. Archive names are indexed without unpacking them; searching inside archives remains opt-in. Rescan once after upgrading from 0.4.0 to populate folder/archive names. Existing saved searches use names by default; save them with a broader scope if needed.
 
 Geometry comparison matches the same triangles at a fixed precision of 0.00001 model units. It ignores placement, vertex/triangle order, winding, normals, colors, and materials, while preserving scale and orientation. Units and intended use are not compared. Rotation, different triangulation, or precision differences may miss matches. These are review candidates, distinct from byte-identical duplicates; no file is automatically selected or removed. Processing is local and bounded to 64 MiB, 500,000 triangles, and 45 seconds per file. Completed results and failures are cached for unchanged files; cancel and resume, or explicitly retry failures. Groups are paged, with up to 80 files shown in each group.
 
@@ -38,6 +40,8 @@ Geometry comparison matches the same triangles at a fixed precision of 0.00001 m
 Use filament or resin profiles with your own material prices, printer power and purchase cost, equipment lifetime, maintenance, electricity, labor, failure allowance, consumables, finishing, packaging, and target margin. Resin profiles also cover wash/cure equipment and consumables.
 
 Enter whole-job time and material from your slicer, or import supported text G-code comments. Export/import Model Scout profiles as versioned JSON. Estimates retain their inputs and file version. Omitted rates are flagged; example/default values are not market prices. Vendor printer profiles and proprietary resin job formats are not imported automatically. A mesh volume alone cannot establish realistic printing time or material use.
+
+Ordinary G-code imports read bounded header/footer windows, consistently from the library and file picker, including files larger than the preview limit. Archive members retain the extraction limit. Imported material conversions retain source units and density. Changing the density or material unit clears a converted quantity for review; manually entered quantities stay unchanged when density changes. Older imported estimates without conversion history require a reviewed quantity before saving again.
 
 ## Model inspection and editing
 

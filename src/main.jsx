@@ -100,8 +100,16 @@ function App() {
     [stats, setStats] = useState({ extensions: [], categories: [] }),
     [rows, setRows] = useState([]),
     [total, setTotal] = useState(0),
+    [locations, setLocations] = useState({
+      rows: [],
+      count: 0,
+      page: 0,
+      pageSize: 20,
+    }),
     [query, setQuery] = useState({
       search: "",
+      searchScope: "name",
+      locationPage: 0,
       ext: "",
       category: "",
       kind: "",
@@ -155,6 +163,7 @@ function App() {
     if (result.page !== queryRef.current.page)
       setQuery((q) => ({ ...q, page: result.page }));
     setTotal(result.count);
+    setLocations(result.locations);
     setStats(s);
   }, []);
   const run = async (fn) => {
@@ -254,7 +263,8 @@ function App() {
       current = false;
     };
   }, [active?.id]);
-  const filter = (values) => setQuery((q) => ({ ...q, ...values, page: 0 }));
+  const filter = (values) =>
+    setQuery((q) => ({ ...q, ...values, page: 0, locationPage: 0 }));
   const openFile = (r) => {
     setActive(r);
     setCategory(r.reviewedCategory || r.category);
@@ -301,7 +311,6 @@ function App() {
       setActive(null);
       setQuery((q) => ({ ...q, page: 0 }));
       await api.scan({ roots, archives, extras });
-      setProgress({ running: true, phase: "files", started: Date.now() });
     });
   const showGroups = (page = 0) =>
     run(async () => {
@@ -582,7 +591,13 @@ function App() {
           </button>
           <SavedSearches
             items={savedSearches}
-            onLoad={(saved) => filter({ collection: "", ...saved })}
+            onLoad={(saved) =>
+              filter({
+                collection: "",
+                ...saved,
+                searchScope: saved.searchScope || "name",
+              })
+            }
             onRemove={(name) =>
               run(async () =>
                 setSavedSearches(await api.savedSearches(name, null, true)),
@@ -669,7 +684,7 @@ function App() {
               <Search size={18} />
               <input
                 aria-label="Search found files"
-                placeholder='Search names, folders, tags, notes · "exact phrase"'
+                placeholder='Search filenames, folders and archives · "exact phrase"'
                 value={query.search}
                 onChange={(e) => filter({ search: e.target.value })}
               />
@@ -682,6 +697,15 @@ function App() {
                 </button>
               )}
             </div>
+            <select
+              aria-label="Search in"
+              value={query.searchScope}
+              onChange={(e) => filter({ searchScope: e.target.value })}
+            >
+              <option value="name">Names only</option>
+              <option value="path">Paths</option>
+              <option value="all">All file details</option>
+            </select>
             <select
               aria-label="File type filter"
               value={query.ext}
@@ -835,12 +859,6 @@ function App() {
                 onClick={() =>
                   run(async () => {
                     await api.duplicates();
-                    setProgress({
-                      running: true,
-                      phase: "duplicates",
-                      done: 0,
-                      total: 0,
-                    });
                   })
                 }
               >
@@ -859,6 +877,83 @@ function App() {
                 Review copies
               </button>
             </div>
+          )}
+          {locations.count > 0 && (
+            <section
+              className="location-matches"
+              aria-label="Matching folders and archives"
+            >
+              <div className="location-heading">
+                <strong>
+                  {count(locations.count)} matching folders and archives
+                </strong>
+                <span className="tiny muted">
+                  Locations matched separately. Contents are not included
+                  automatically.
+                </span>
+              </div>
+              <ul>
+                {locations.rows.map((location) => (
+                  <li key={location.path}>
+                    <span className="location-kind">
+                      {location.kind === "folder" ? "Folder" : "Archive"}
+                    </span>
+                    <div>
+                      <strong>{location.name}</strong>
+                      <span title={location.path}>{location.path}</span>
+                    </div>
+                    <button
+                      className="text-button"
+                      aria-label={
+                        (location.kind === "folder"
+                          ? "Open folder "
+                          : "Show archive ") + location.name
+                      }
+                      onClick={() =>
+                        run(() => api.revealLocation(location.path))
+                      }
+                    >
+                      {location.kind === "folder"
+                        ? "Open folder"
+                        : "Show in folder"}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+              {locations.count > locations.pageSize && (
+                <div className="location-pages">
+                  <button
+                    disabled={locations.page === 0}
+                    onClick={() =>
+                      setQuery((q) => ({
+                        ...q,
+                        locationPage: locations.page - 1,
+                      }))
+                    }
+                  >
+                    Previous locations
+                  </button>
+                  <span>
+                    {locations.page + 1} /{" "}
+                    {Math.ceil(locations.count / locations.pageSize)}
+                  </span>
+                  <button
+                    disabled={
+                      (locations.page + 1) * locations.pageSize >=
+                      locations.count
+                    }
+                    onClick={() =>
+                      setQuery((q) => ({
+                        ...q,
+                        locationPage: locations.page + 1,
+                      }))
+                    }
+                  >
+                    Next locations
+                  </button>
+                </div>
+              )}
+            </section>
           )}
           <div className="table-area">
             {rows.length ? (

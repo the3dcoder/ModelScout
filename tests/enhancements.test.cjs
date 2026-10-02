@@ -69,7 +69,7 @@ test("tag filters combine all/any/exclusion; bulk edits preserve category; saved
     assert.equal(c.query({ tags: ["red", "blue"], tagMode: "any" }).count, 3);
     assert.equal(c.query({ excludeTags: ["red"] }).count, 1);
     assert.equal(c.query({ kind: "favorites" }).count, 1);
-    assert.equal(c.query({ search: "alpha red" }).count, 1);
+    assert.equal(c.query({ search: "alpha red", searchScope: "all" }).count, 1);
     assert.equal(c.ids({ tags: ["red"] }).length, 2);
     assert.equal(c.query({ page: 999, pageSize: 24 }).page, 0);
     c.savedSearches("Reds", { tags: ["red"], page: 900 });

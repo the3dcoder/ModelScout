@@ -47,6 +47,7 @@ async function scan(
     running: true,
   };
   catalog.setting("lastScan", state);
+  for (const root of scope) catalog.addLocation(root, "folder", root);
   const queue = scope.map((root) => ({ dir: root, root }));
   const packs = [];
   let last = 0;
@@ -73,6 +74,7 @@ async function scan(
           continue;
         }
         if (entry.isDirectory()) {
+          catalog.addLocation(file, "folder", root);
           queue.push({ dir: file, root });
           continue;
         }
@@ -86,8 +88,10 @@ async function scan(
           } catch (e) {
             error(file, e);
           }
-        } else if (archives && ["zip", "7z", "rar"].includes(ext))
-          packs.push({ file, root });
+        } else if (["zip", "7z", "rar"].includes(ext)) {
+          catalog.addLocation(file, "archive", root);
+          if (archives) packs.push({ file, root });
+        }
         emit();
       }
     } catch (e) {

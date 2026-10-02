@@ -1,5 +1,17 @@
 const { DatabaseSync } = require("node:sqlite");
 const crypto = require("node:crypto");
+const fold = (text) =>
+  String(text || "")
+    .normalize("NFC")
+    .toLowerCase();
+const termsOf = (search) =>
+  (
+    String(search || "")
+      .slice(0, 500)
+      .match(/"[^"]+"|\S+/g) || []
+  )
+    .slice(0, 8)
+    .map((raw) => fold(raw.replace(/^"|"$/g, "")));
 const versionOf = (r) => `${r.size}:${r.mtime}:${r.ctime ?? ""}`;
 const tagsOf = (value) =>
   [
@@ -18,22 +30,29 @@ const present = (r) =>
 class Catalog {
   constructor(file) {
     this.db = new DatabaseSync(file);
+    this.db.function(
+      "scout_contains",
+      { deterministic: true },
+      (value, term) => +fold(value).includes(term),
+    );
     this.db.exec("PRAGMA busy_timeout=5000; PRAGMA journal_mode=WAL");
     const exists = this.db
       .prepare("SELECT name FROM sqlite_master WHERE name='files'")
       .get();
     if (
       exists &&
-      this.db.prepare("PRAGMA user_version").get().user_version < 4 &&
+      this.db.prepare("PRAGMA user_version").get().user_version < 5 &&
       file !== ":memory:"
     ) {
-      this.backupPath = `${file}.before-v4-${Date.now()}.bak`;
+      this.backupPath = `${file}.before-v5-${Date.now()}.bak`;
       this.db.prepare("VACUUM INTO ?").run(this.backupPath);
     }
     this.db
       .exec(`CREATE TABLE IF NOT EXISTS files(id TEXT PRIMARY KEY,path TEXT,member TEXT,root TEXT,name TEXT,ext TEXT,size REAL,mtime REAL,ctime REAL,family TEXT,category TEXT,evidence TEXT,confidence TEXT,preview INTEGER,hash TEXT,analysis TEXT);
       CREATE TABLE IF NOT EXISTS notes(id TEXT PRIMARY KEY,category TEXT,notes TEXT,tags TEXT NOT NULL DEFAULT '[]',favorite INTEGER NOT NULL DEFAULT 0);
       CREATE TABLE IF NOT EXISTS settings(key TEXT PRIMARY KEY,value TEXT);
+      CREATE TABLE IF NOT EXISTS locations(path TEXT PRIMARY KEY,name TEXT NOT NULL,kind TEXT NOT NULL,root TEXT NOT NULL);
+      CREATE INDEX IF NOT EXISTS locations_name ON locations(name COLLATE NOCASE,path);
       CREATE TABLE IF NOT EXISTS asset_cache(id TEXT PRIMARY KEY,size REAL,mtime REAL,ctime REAL,hash TEXT,analysis TEXT,thumbnail BLOB,thumbError TEXT);
       CREATE TABLE IF NOT EXISTS collections(id TEXT PRIMARY KEY,name TEXT NOT NULL COLLATE NOCASE UNIQUE,creator TEXT NOT NULL DEFAULT '',license TEXT NOT NULL DEFAULT '',url TEXT NOT NULL DEFAULT '',notes TEXT NOT NULL DEFAULT '');
       CREATE TABLE IF NOT EXISTS collection_members(collection_id TEXT NOT NULL,file_id TEXT NOT NULL,PRIMARY KEY(collection_id,file_id));
@@ -69,7 +88,7 @@ class Catalog {
       });
     }
     this.db.exec(
-      "INSERT OR IGNORE INTO asset_cache(id,size,mtime,ctime,hash,analysis) SELECT id,size,mtime,ctime,hash,analysis FROM files; PRAGMA user_version=4",
+      "INSERT OR IGNORE INTO asset_cache(id,size,mtime,ctime,hash,analysis) SELECT id,size,mtime,ctime,hash,analysis FROM files; PRAGMA user_version=5",
     );
     this.insert = this.db.prepare(
       "INSERT OR IGNORE INTO files(id,path,member,root,name,ext,size,mtime,ctime,family,category,evidence,confidence,preview,hash,analysis) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
@@ -94,7 +113,7 @@ class Catalog {
   beginScan() {
     this.flush();
     this.db.exec(
-      "BEGIN; DROP TABLE IF EXISTS scan_backup; CREATE TABLE scan_backup AS SELECT * FROM files; DELETE FROM files; COMMIT",
+      "BEGIN; DROP TABLE IF EXISTS scan_backup; CREATE TABLE scan_backup AS SELECT * FROM files; DROP TABLE IF EXISTS locations_backup; CREATE TABLE locations_backup AS SELECT * FROM locations; DELETE FROM files; DELETE FROM locations; COMMIT",
     );
   }
   finishScan(restore = false) {
@@ -110,6 +129,19 @@ class Catalog {
           this.db.exec(
             "DELETE FROM files; INSERT INTO files SELECT * FROM scan_backup",
           );
+        if (
+          this.db
+            .prepare(
+              "SELECT name FROM sqlite_master WHERE name='locations_backup'",
+            )
+            .get()
+        ) {
+          if (restore)
+            this.db.exec(
+              "DELETE FROM locations; INSERT INTO locations SELECT * FROM locations_backup",
+            );
+          this.db.exec("DROP TABLE locations_backup");
+        }
         this.db.exec("DROP TABLE scan_backup; COMMIT");
         return true;
       } catch (e) {
@@ -176,18 +208,28 @@ class Catalog {
       tags = [],
       excludeTags = [],
       tagMode = "all",
+      searchScope = "name",
     } = options;
-    const terms =
-      String(search)
-        .slice(0, 500)
-        .match(/"[^"]+"|\S+/g) || [];
-    for (const raw of terms.slice(0, 8)) {
-      const term =
-        "%" + raw.replace(/^"|"$/g, "").replace(/[\\%_]/g, "\\$&") + "%";
+    for (const term of termsOf(search)) {
+      const fields =
+        searchScope === "all"
+          ? [
+              "f.name",
+              "f.path",
+              "f.member",
+              "COALESCE(n.notes,'')",
+              "COALESCE(n.tags,'')",
+              "COALESCE(n.category,f.category)",
+            ]
+          : searchScope === "path"
+            ? ["f.path", "f.member"]
+            : ["f.name"];
       clauses.push(
-        "(f.name LIKE ? ESCAPE '\\' OR f.path LIKE ? ESCAPE '\\' OR f.member LIKE ? ESCAPE '\\' OR COALESCE(n.notes,'') LIKE ? ESCAPE '\\' OR COALESCE(n.tags,'') LIKE ? ESCAPE '\\' OR COALESCE(n.category,f.category) LIKE ? ESCAPE '\\')",
+        "(" +
+          fields.map((field) => `scout_contains(${field}, ?)`).join(" OR ") +
+          ")",
       );
-      params.push(term, term, term, term, term, term);
+      params.push(...fields.map(() => term));
     }
     if (ext) {
       clauses.push("f.ext=?");
@@ -271,7 +313,40 @@ class Catalog {
       )
       .all(...params, pageSize, page * pageSize)
       .map(present);
-    return { rows, count, page, pageSize };
+    return { rows, count, page, pageSize, locations: this.locations(options) };
+  }
+  addLocation(file, kind, root) {
+    this.db
+      .prepare("INSERT OR IGNORE INTO locations VALUES(?,?,?,?)")
+      .run(file, require("node:path").basename(file) || file, kind, root);
+  }
+  location(file) {
+    return this.db
+      .prepare("SELECT * FROM locations WHERE path=?")
+      .get(String(file));
+  }
+  locations(options = {}) {
+    const terms = termsOf(options.search);
+    if (!terms.length) return { rows: [], count: 0, page: 0, pageSize: 20 };
+    const field = options.searchScope === "path" ? "path" : "name";
+    const where =
+      " WHERE " + terms.map(() => `scout_contains(${field}, ?)`).join(" AND ");
+    const params = terms;
+    const count = this.db
+      .prepare("SELECT COUNT(*) AS count FROM locations" + where)
+      .get(...params).count;
+    const page = Math.min(
+      Math.max(0, Math.floor(Number(options.locationPage) || 0)),
+      Math.max(0, Math.ceil(count / 20) - 1),
+    );
+    const rows = this.db
+      .prepare(
+        "SELECT * FROM locations" +
+          where +
+          " ORDER BY name COLLATE NOCASE,path LIMIT 20 OFFSET ?",
+      )
+      .all(...params, page * 20);
+    return { rows, count, page, pageSize: 20 };
   }
   stats() {
     return {
@@ -460,6 +535,7 @@ class Catalog {
       const query = {};
       for (const k of [
         "search",
+        "searchScope",
         "ext",
         "category",
         "kind",
@@ -470,6 +546,9 @@ class Catalog {
       ])
         query[k] = String(options?.[k] || "").slice(0, 500);
       query.tags = tagsOf(options?.tags);
+      query.searchScope = ["name", "path", "all"].includes(query.searchScope)
+        ? query.searchScope
+        : "name";
       query.excludeTags = tagsOf(options?.excludeTags);
       saved.push({ name, query });
     }

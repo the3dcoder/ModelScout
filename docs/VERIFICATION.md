@@ -19,9 +19,10 @@ Use Windows x64 and Node.js 24.15 or newer. Tests create disposable files under
    WASM hashes against pinned upstream revisions and packages sources/notices
    with the executable. Keep the generated SHA-256 file with the ZIP.
 
-## Local acceptance, 0.4.0
+## Local acceptance, 0.4.1
 
-The Windows source suite has 22 passing core/feature tests. Desktop fixtures cover
+The Windows source suite has 27 passing core/feature tests. Seven source desktop
+workflows and the same seven packaged workflows pass. Desktop fixtures cover
 scan/preview, reviewed duplicate moves, mocked cloud consent, static galleries,
 failed previews, favorites/tags, saved searches, FDM/resin estimates, profile
 import/export, mesh analysis/edit/export, collection lifecycle, referenced assets,
@@ -32,6 +33,18 @@ active-worker cancellation, cache reuse, changed-fingerprint invalidation, and
 saved-estimate relocation. Desktop regression fixtures verify paired previews,
 geometry keeper protection across 21 groups, and exact-duplicate keeper choices
 across 51 groups. Source and packaged desktop suites each cover these workflows.
+
+Reliability fixtures verify case-insensitive filename search, including accented
+names; separate paged folder/archive matches; explicit path scope; saved scope;
+matching bulk selection and CSV output; file filters and pagination; thumbnail
+preparation and retries; search focus; zero-candidate duplicate completion; failed
+scan recovery after reload; both directions of imported density conversion; saved
+and legacy estimate review; preserved manual quantities; and catalog migration
+with interrupted-scan recovery. Core tests exercise a generated G-code file above
+128 MiB, identical results from both import entry points, stale-source rejection,
+and the retained archive-member limit. Folder/reveal shell calls, native file
+dialogs, and paid cloud requests are intercepted in tests; source file operations,
+parsers, cost calculations, previews, SQLite persistence, and transfers are real.
 
 The portable build is unsigned. Source tests and local packaged tests do not
 establish GitHub-hosted CI, code-signing, or every format/model combination. Cloud

@@ -34,14 +34,26 @@ export function CostPanel({ file, onClose }) {
   const [profiles, setProfiles] = useState([]),
     [inputs, setInputs] = useState({ hours: "", amount: "", parts: 1 }),
     [source, setSource] = useState("Manual slicer values"),
+    [materialSource, setMaterialSource] = useState(null),
     [message, setMessage] = useState(""),
     [busy, setBusy] = useState(false);
   const upload = useRef();
   const chooseProfile = (value) => {
     setProfile(value);
-    if (value.materialUnit !== profile.materialUnit) {
+    const unitChanged = value.materialUnit !== profile.materialUnit;
+    const densityChanged =
+      materialSource?.sourceUnit !== materialSource?.unit &&
+      materialSource &&
+      Number(value.density) !== Number(materialSource.density);
+    if (unitChanged || densityChanged) {
       setInputs((p) => ({ ...p, amount: "" }));
-      setSource("Material unit changed; enter slicer quantity again");
+      setMaterialSource(null);
+      setSource(
+        unitChanged
+          ? "Material unit changed; enter slicer quantity again"
+          : "Density changed; reimport or enter a reviewed material quantity",
+      );
+      setMessage("Review the material quantity before saving this estimate.");
     }
   };
   useEffect(() => {
@@ -55,12 +67,28 @@ export function CostPanel({ file, onClose }) {
         setProfiles(list);
         if (saved) {
           setProfile(saved.profile);
-          setInputs(saved.inputs);
+          const legacyImport =
+            /^Imported:/.test(saved.source) && !saved.materialSource;
+          setInputs(
+            legacyImport ? { ...saved.inputs, amount: "" } : saved.inputs,
+          );
           setSource(saved.source);
+          setMaterialSource(saved.materialSource || null);
+          const warnings = [
+            ...(legacyImport
+              ? [
+                  `Older imported estimate has no material conversion history. Saved quantity was ${saved.inputs.amount} ${saved.profile.materialUnit}; reimport or enter a reviewed quantity.`,
+                ]
+              : []),
+            ...(saved.fileVersion !== file.version
+              ? [
+                  "This estimate belongs to an older file version. Re-slice and update it.",
+                ]
+              : []),
+          ];
           setMessage(
-            saved.fileVersion !== file.version
-              ? "This estimate belongs to an older file version. Re-slice and update it."
-              : "Loaded the last saved estimate for this file.",
+            warnings.join(" ") ||
+              "Loaded the last saved estimate for this file.",
           );
         } else if (list.length) setProfile(list.at(-1));
       })
@@ -99,7 +127,7 @@ export function CostPanel({ file, onClose }) {
         min="0"
         step="any"
         value={profile[key]}
-        onChange={(e) => setProfile((p) => ({ ...p, [key]: e.target.value }))}
+        onChange={(e) => chooseProfile({ ...profile, [key]: e.target.value })}
       />
     </label>
   );
@@ -117,6 +145,30 @@ export function CostPanel({ file, onClose }) {
             (values.grams == null
               ? null
               : values.grams / Number(profile.density)));
+      const direct =
+        profile.materialUnit === "g" ? values.grams : values.milliliters;
+      const sourceUnit =
+        direct != null
+          ? profile.materialUnit
+          : profile.materialUnit === "g"
+            ? "ml"
+            : "g";
+      const sourceAmount =
+        sourceUnit === "g" ? values.grams : values.milliliters;
+      setMaterialSource(
+        amount == null
+          ? null
+          : {
+              source: values.source,
+              sourceUnit,
+              sourceAmount,
+              unit: profile.materialUnit,
+              density:
+                sourceUnit === profile.materialUnit
+                  ? null
+                  : Number(profile.density),
+            },
+      );
       setInputs((p) => ({
         ...p,
         hours: values.hours == null ? "" : Number(values.hours.toFixed(6)),
@@ -370,6 +422,7 @@ export function CostPanel({ file, onClose }) {
                 value={inputs.amount}
                 onChange={(e) => {
                   setInputs((p) => ({ ...p, amount: e.target.value }));
+                  setMaterialSource(null);
                   setSource("Manual or edited slicer values");
                 }}
               />
@@ -407,6 +460,14 @@ export function CostPanel({ file, onClose }) {
             {source}. Text G-code comments from Prusa / Orca / Cura where
             available. For resin binary files, enter slicer values manually.
           </p>
+          {materialSource &&
+            materialSource.sourceUnit !== materialSource.unit && (
+              <p className="tiny muted">
+                Material converted from {materialSource.sourceAmount}{" "}
+                {materialSource.sourceUnit} at {materialSource.density} g/ml.
+                Changing density requires another review.
+              </p>
+            )}
           {estimate ? (
             <>
               <details>
@@ -461,6 +522,7 @@ export function CostPanel({ file, onClose }) {
                 profile,
                 inputs,
                 source,
+                materialSource,
               );
               setMessage(
                 "Estimate saved with this model and its profile assumptions.",
