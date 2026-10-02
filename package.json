@@ -1,0 +1,82 @@
+{
+  "name": "model-scout",
+  "version": "0.3.0",
+  "private": true,
+  "description": "A local 3D file discovery and organization workbench",
+  "author": "Big Bwain LLC",
+  "license": "MIT",
+  "main": "app/main.cjs",
+  "scripts": {
+    "build": "vite build",
+    "start": "npm run build && electron .",
+    "test": "node --test tests/core.test.cjs tests/enhancements.test.cjs tests/organization.test.cjs",
+    "test:app": "node tests/app.test.cjs && node tests/library-app.test.cjs && node tests/production-app.test.cjs && node tests/organization-app.test.cjs && node tests/importers-app.test.cjs",
+    "package": "npm run licenses && npm run build && electron-builder --win portable --x64",
+    "format:check": "prettier --check app src tests scripts vite.config.mjs package.json",
+    "test:packaged": "node scripts/test-packaged.cjs",
+    "licenses": "node scripts/licenses.cjs",
+    "release:bundle": "node scripts/release-bundle.cjs"
+  },
+  "build": {
+    "appId": "com.bigbwain.modelscout",
+    "productName": "Model Scout",
+    "directories": {
+      "output": "release/0.3.0"
+    },
+    "files": [
+      "app/**/*",
+      "src/costing.mjs",
+      "dist/**/*",
+      "package.json",
+      "docs/THIRD_PARTY.md",
+      "notices/**/*",
+      "assets/icon.ico",
+      "LICENSE"
+    ],
+    "asar": true,
+    "extraResources": [
+      {
+        "from": "node_modules/three/examples/jsm",
+        "to": "app.asar.unpacked/node_modules/three/examples/jsm",
+        "filter": [
+          "loaders/STLLoader.js",
+          "exporters/STLExporter.js",
+          "loaders/MTLLoader.js"
+        ]
+      }
+    ],
+    "win": {
+      "target": "portable",
+      "signAndEditExecutable": true,
+      "icon": "assets/icon.ico"
+    },
+    "portable": {
+      "artifactName": "Model-Scout-${version}.exe"
+    },
+    "asarUnpack": [
+      "node_modules/three/**/*",
+      "node_modules/assimpjs/**/*",
+      "node_modules/occt-import-js/**/*"
+    ]
+  },
+  "dependencies": {
+    "assimpjs": "^0.0.10",
+    "lucide-react": "^1.48.0",
+    "occt-import-js": "^0.0.23",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "three": "^0.186.1",
+    "yauzl": "^3.4.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^6.1.1",
+    "electron": "^44.4.5",
+    "electron-builder": "^26.15.3",
+    "playwright": "^1.63.0",
+    "prettier": "^3.9.9",
+    "vite": "^8.3.1"
+  },
+  "engines": {
+    "node": ">=24.15.0"
+  }
+}

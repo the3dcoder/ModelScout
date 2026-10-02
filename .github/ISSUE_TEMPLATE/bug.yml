@@ -1,0 +1,27 @@
+name: Bug report
+description: Report unexpected behavior in Model Scout
+body:
+  - type: input
+    id: version
+    attributes:
+      label: App and Windows versions
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Include the format and operation. Remove private paths and keys.
+    validations:
+      required: true
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Expected and actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: sample
+    attributes:
+      label: Sanitized error or minimal sample
+      description: Share only files you have permission to distribute.
