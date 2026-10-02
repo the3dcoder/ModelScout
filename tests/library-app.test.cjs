@@ -43,6 +43,22 @@ const { fixture, STL } = require("./helpers.cjs");
     await page.getByAltText("3D preview of bracket.stl").waitFor();
     await page.getByText("Preview unavailable", { exact: true }).waitFor();
     await page
+      .getByRole("button", { name: "Prepare this page", exact: true })
+      .click();
+    await page.evaluate(() => {
+      window.retriedPreview = false;
+      window.scout.onThumbnail((data) => {
+        if (data.error) window.retriedPreview = true;
+      });
+    });
+    await page
+      .locator(".model-card")
+      .filter({ hasText: "broken.stl" })
+      .getByRole("button", { name: "Retry preview", exact: true })
+      .click();
+    await page.waitForFunction(() => window.retriedPreview);
+    await page.getByText("Preview unavailable", { exact: true }).waitFor();
+    await page
       .getByRole("button", { name: "Favorite dragon.stl", exact: true })
       .click();
     await page

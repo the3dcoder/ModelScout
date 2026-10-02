@@ -22,7 +22,17 @@ const { fixture, STL, zip } = require("./helpers.cjs");
   );
   const env = { ...process.env, SCOUT_TEST_DATA: path.join(root, "data") };
   delete env.ELECTRON_RUN_AS_NODE;
-  const app = await electron.launch({ args: [path.resolve(".")], env });
+  const app = await electron.launch(
+    process.env.SCOUT_PACKAGED
+      ? {
+          executablePath: path.resolve(
+            `release/${require("../package.json").version}/win-unpacked/Model Scout.exe`,
+          ),
+          args: [],
+          env,
+        }
+      : { args: [path.resolve(".")], env },
+  );
   try {
     const page = await app.firstWindow();
     await page.waitForLoadState("domcontentloaded");
