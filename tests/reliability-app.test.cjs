@@ -95,8 +95,8 @@ const { fixture, zip } = require("./helpers.cjs");
       .click();
     await page.waitForFunction(
       () =>
-        document.querySelector('.cost-result input[type="number"]').value ===
-        "2",
+        document.querySelectorAll('.cost-result input[type="number"]')[1]
+          .value === "50",
     );
     assert.equal(
       await page
@@ -151,10 +151,32 @@ const { fixture, zip } = require("./helpers.cjs");
         "Imported: old.gcode",
       );
     });
+    const { DatabaseSync } = require("node:sqlite");
+    const legacyDb = new DatabaseSync(
+      path.join(root, "profile", "catalog.sqlite"),
+    );
+    try {
+      const entry = legacyDb
+        .prepare("SELECT key,value FROM settings WHERE key LIKE 'cost:%'")
+        .get();
+      const saved = JSON.parse(entry.value);
+      saved.fileVersion = "older-version";
+      legacyDb
+        .prepare("UPDATE settings SET value=? WHERE key=?")
+        .run(JSON.stringify(saved), entry.key);
+    } finally {
+      legacyDb.close();
+    }
     await page
       .getByRole("button", { name: "Estimate printing cost", exact: true })
       .click();
     await page.getByText("Older imported estimate", { exact: false }).waitFor();
+    assert.ok(
+      (await page.locator(".cost-message").textContent()).includes(
+        "older file version",
+      ),
+      "Legacy review must also retain the changed-file warning",
+    );
     assert.equal(
       await page
         .getByLabel("Material for whole job (ml)", { exact: true })

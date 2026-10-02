@@ -74,12 +74,21 @@ export function CostPanel({ file, onClose }) {
           );
           setSource(saved.source);
           setMaterialSource(saved.materialSource || null);
+          const warnings = [
+            ...(legacyImport
+              ? [
+                  `Older imported estimate has no material conversion history. Saved quantity was ${saved.inputs.amount} ${saved.profile.materialUnit}; reimport or enter a reviewed quantity.`,
+                ]
+              : []),
+            ...(saved.fileVersion !== file.version
+              ? [
+                  "This estimate belongs to an older file version. Re-slice and update it.",
+                ]
+              : []),
+          ];
           setMessage(
-            legacyImport
-              ? `Older imported estimate has no material conversion history. Saved quantity was ${saved.inputs.amount} ${saved.profile.materialUnit}; reimport or enter a reviewed quantity.`
-              : saved.fileVersion !== file.version
-                ? "This estimate belongs to an older file version. Re-slice and update it."
-                : "Loaded the last saved estimate for this file.",
+            warnings.join(" ") ||
+              "Loaded the last saved estimate for this file.",
           );
         } else if (list.length) setProfile(list.at(-1));
       })
