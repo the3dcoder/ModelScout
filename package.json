@@ -1,6 +1,6 @@
 {
   "name": "model-scout",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": true,
   "description": "A local 3D file discovery and organization workbench",
   "author": "Big Bwain LLC",
@@ -9,8 +9,8 @@
   "scripts": {
     "build": "vite build",
     "start": "npm run build && electron .",
-    "test": "node --test tests/core.test.cjs tests/enhancements.test.cjs tests/organization.test.cjs",
-    "test:app": "node tests/app.test.cjs && node tests/library-app.test.cjs && node tests/production-app.test.cjs && node tests/organization-app.test.cjs && node tests/importers-app.test.cjs",
+    "test": "node --test tests/core.test.cjs tests/enhancements.test.cjs tests/organization.test.cjs tests/geometry.test.cjs",
+    "test:app": "node tests/app.test.cjs && node tests/library-app.test.cjs && node tests/production-app.test.cjs && node tests/organization-app.test.cjs && node tests/importers-app.test.cjs && node tests/geometry-app.test.cjs",
     "package": "npm run licenses && npm run build && electron-builder --win portable --x64",
     "format:check": "prettier --check app src tests scripts vite.config.mjs package.json",
     "test:packaged": "node scripts/test-packaged.cjs",
@@ -21,7 +21,7 @@
     "appId": "com.bigbwain.modelscout",
     "productName": "Model Scout",
     "directories": {
-      "output": "release/0.3.0"
+      "output": "release/0.4.0"
     },
     "files": [
       "app/**/*",
@@ -41,7 +41,9 @@
         "filter": [
           "loaders/STLLoader.js",
           "exporters/STLExporter.js",
-          "loaders/MTLLoader.js"
+          "loaders/MTLLoader.js",
+          "loaders/OBJLoader.js",
+          "loaders/PLYLoader.js"
         ]
       }
     ],

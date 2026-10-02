@@ -1,6 +1,6 @@
 # Feature research and roadmap
 
-Research reviewed: 2026-09-27–28. Scope: local Windows model-library discovery, organization, printing estimates, and model inspection.
+Research reviewed: 2026-09-27–28 and 2026-10-02. Scope: local Windows model-library discovery, organization, printing estimates, and model inspection.
 
 ## Evidence, not a market-wide ranking
 
@@ -54,3 +54,13 @@ These larger features are not silently represented as implemented. Current bound
 Reviewed transfers now resolve declared local OBJ materials/textures and glTF buffers/images, preserve their relative paths, copy support files before models, and keep shared asset originals. The [glTF 2.0 specification](https://registry.khronos.org/glTF/specs/2.0/glTF-2.0.html) defines buffer and image URI fields. Three.js MTLLoader supplies the material parser. Unsupported references stop automatic inclusion and require review; this is not a universal project dependency resolver.
 
 Reliability work binds preview reads to the restored file fingerprint after cancelled scans, limits transfer-progress payload size, preserves metadata after verified moves, and guards stale inspector updates. Public-source preparation adds MIT licensing for original code, complete runtime notices, importer source bundles, fixture-based Windows CI, and contributor documentation.
+
+## Delivered in 0.4.0
+
+[Manyfold #3876](https://github.com/manyfold3d/manyfold/issues/3876) requests shared-file deduplication that preserves references from multiple projects. This is a qualitative signal that cleanup must account for project relationships, rather than a market-wide popularity ranking. Model Scout keeps explicit keeper and transfer review, including declared assets, rather than introducing symlink-based consolidation in this update.
+
+We evaluated [Trimesh comparison identifiers](https://trimesh.org/trimesh.comparison.html), whose documented design aims to tolerate rigid transforms and tessellation changes. Such identifiers remain candidates for a future broader similarity pass, which needs measured false-positive and false-negative rates. This update uses the existing [Three.js OBJ](https://threejs.org/docs/pages/OBJLoader.html) and [PLY](https://threejs.org/docs/pages/PLYLoader.html) parsers alongside STL, without adding a Python runtime or copying comparison code from Trimesh.
+
+Matching geometry review compares a canonical triangle list at fixed model-unit precision, ignoring placement and order but retaining scale and orientation. A match is a review candidate, not confirmation that units, appearance, or intended use agree. Paired previews, explicit candidate selection, cross-page keeper validation, cancellation, cached success/failure results, retry, and paged groups make the bounded comparison usable in a large catalog. This is an initial step toward the geometry-similarity priority above; rotated or differently tessellated models may still be missed.
+
+Regression fixes retain exact-duplicate keeper choices across pages, prevent reviewing a partial duplicate scan, preserve saved cost estimates after verified moves, clear moved files from the inspector, and normalize Git checkout line endings for hosted Windows formatting checks. The baseline source was pushed before this update began.

@@ -6,7 +6,7 @@ Search folders or drives, browse a cached gallery, keep multi-part projects toge
 
 ## Run it
 
-Use Windows 10/11 x64. Extract the complete release ZIP and run **Model-Scout-0.3.0.exe**. No installer is required. The current build is unsigned.
+Use Windows 10/11 x64. Build the release ZIP with the commands below, or download a published build when one is available under [Releases](https://github.com/the3dcoder/ModelScout/releases). Extract the complete ZIP and run **Model-Scout-0.4.0.exe**. No installer is required. The current build is unsigned.
 
 The portable executable stores its catalog, thumbnails, profiles, and transfer logs in `%APPDATA%\Model Scout`. Back up that folder while the app is closed if you want to preserve your library metadata. Source models stay in their original folders until you confirm a move.
 
@@ -24,9 +24,12 @@ npm start
 3. Switch between the list and gallery. Thumbnails are generated for visible cards and cached; **Prepare this page** is an explicit background action.
 4. Select related files and choose **Collection**. Keep creator, source link, license notes, and project notes with the set. One file can belong to several collections. Membership survives rescans; unavailable files are counted separately.
 5. Run **Check duplicates**. Exact matches use SHA-256 after size filtering. Choose a keeper and review moving extras to a separate folder.
-6. Choose **Copy / move selected**, set a destination, and review the file-by-file plan. Existing files are never overwritten. Every copy is verified before a moved source is removed.
+6. Use **Matching geometry** to compare selected STL, OBJ, and PLY files, or all supported files in the current catalog. Compare candidates in paired previews, keep at least one file per group, and explicitly select extras for transfer review.
+7. Choose **Copy / move selected**, set a destination, and review the file-by-file plan. Existing files are never overwritten. Every copy is verified before a moved source is removed.
 
-Category organization retains the original search-root folder, subfolders, and filenames. Collections are virtual groups, so adding a file to one does not move it. After an in-app move, scan the destination to see that file again with its collection, tags, favorites, and notes.
+Category organization retains the original search-root folder, subfolders, and filenames. Collections are virtual groups, so adding a file to one does not move it. After an in-app move, scan the destination to see that file again with its collection, tags, favorites, notes, and saved cost estimate. The estimate retains its original fingerprint and may need review.
+
+Geometry comparison matches the same triangles at a fixed precision of 0.00001 model units. It ignores placement, vertex/triangle order, winding, normals, colors, and materials, while preserving scale and orientation. Units and intended use are not compared. Rotation, different triangulation, or precision differences may miss matches. These are review candidates, distinct from byte-identical duplicates; no file is automatically selected or removed. Processing is local and bounded to 64 MiB, 500,000 triangles, and 45 seconds per file. Completed results and failures are cached for unchanged files; cancel and resume, or explicitly retry failures. Groups are paged, with up to 80 files shown in each group.
 
 **Include declared OBJ/glTF assets** adds supported local material, texture, and buffer references to the review plan. Shared support files are copied once per destination and their originals remain in place, even during a model move. Missing or unsafe references block the plan. Other project formats, extension-specific glTF references, and archive-contained projects may need manual review. External assets are preserved during transfer; previews do not fetch those textures or buffers.
 
