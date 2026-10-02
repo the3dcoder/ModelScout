@@ -24,10 +24,10 @@ class Catalog {
       .get();
     if (
       exists &&
-      this.db.prepare("PRAGMA user_version").get().user_version < 3 &&
+      this.db.prepare("PRAGMA user_version").get().user_version < 4 &&
       file !== ":memory:"
     ) {
-      this.backupPath = `${file}.before-v3-${Date.now()}.bak`;
+      this.backupPath = `${file}.before-v4-${Date.now()}.bak`;
       this.db.prepare("VACUUM INTO ?").run(this.backupPath);
     }
     this.db
@@ -37,6 +37,8 @@ class Catalog {
       CREATE TABLE IF NOT EXISTS asset_cache(id TEXT PRIMARY KEY,size REAL,mtime REAL,ctime REAL,hash TEXT,analysis TEXT,thumbnail BLOB,thumbError TEXT);
       CREATE TABLE IF NOT EXISTS collections(id TEXT PRIMARY KEY,name TEXT NOT NULL COLLATE NOCASE UNIQUE,creator TEXT NOT NULL DEFAULT '',license TEXT NOT NULL DEFAULT '',url TEXT NOT NULL DEFAULT '',notes TEXT NOT NULL DEFAULT '');
       CREATE TABLE IF NOT EXISTS collection_members(collection_id TEXT NOT NULL,file_id TEXT NOT NULL,PRIMARY KEY(collection_id,file_id));
+      CREATE TABLE IF NOT EXISTS geometry_cache(id TEXT PRIMARY KEY,version TEXT NOT NULL,algorithm TEXT NOT NULL,size REAL,mtime REAL,ctime REAL,signature TEXT,details TEXT,error TEXT);
+      CREATE INDEX IF NOT EXISTS geometry_signature ON geometry_cache(signature);
       CREATE INDEX IF NOT EXISTS collection_files ON collection_members(file_id);
       CREATE INDEX IF NOT EXISTS files_size ON files(size);
       CREATE INDEX IF NOT EXISTS files_hash ON files(hash);
@@ -67,7 +69,7 @@ class Catalog {
       });
     }
     this.db.exec(
-      "INSERT OR IGNORE INTO asset_cache(id,size,mtime,ctime,hash,analysis) SELECT id,size,mtime,ctime,hash,analysis FROM files; PRAGMA user_version=3",
+      "INSERT OR IGNORE INTO asset_cache(id,size,mtime,ctime,hash,analysis) SELECT id,size,mtime,ctime,hash,analysis FROM files; PRAGMA user_version=4",
     );
     this.insert = this.db.prepare(
       "INSERT OR IGNORE INTO files(id,path,member,root,name,ext,size,mtime,ctime,family,category,evidence,confidence,preview,hash,analysis) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
@@ -318,6 +320,14 @@ class Catalog {
       .all(...params)
       .map((r) => r.id);
   }
+  queryGeometryRows() {
+    return this.db
+      .prepare(
+        "SELECT * FROM files WHERE ext IN ('stl','obj','ply') ORDER BY id",
+      )
+      .all()
+      .map((r) => ({ ...r, version: versionOf(r) }));
+  }
   annotate(id, category, notes) {
     if (!this.get(id)) throw new Error("File not in catalog.");
     this.db
@@ -431,6 +441,8 @@ class Catalog {
         .run(next, id);
       this.db.prepare("DELETE FROM collection_members WHERE file_id=?").run(id);
       this.db.prepare("DELETE FROM files WHERE id=?").run(id);
+      const estimate = this.setting("cost:" + id);
+      if (estimate) this.setting("cost:" + next, estimate);
       this.db.exec("COMMIT");
     } catch (error) {
       this.db.exec("ROLLBACK");

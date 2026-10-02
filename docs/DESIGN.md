@@ -10,7 +10,9 @@ The scanner streams progress and commits in batches. An inventory snapshot survi
 
 Three.js supplies loaders, the MTL parser, previews, and STL export. One hidden renderer generates thumbnails for visible items. Assimp and OpenCascade conversion and STL diagnostics run in bounded workers. Previews block external resource fetching.
 
-Collections link persistent file IDs to project metadata. They survive changes to scan scope and report unavailable members. Verified in-app moves remap personal metadata and collection memberships to the destination ID; that location becomes available when scanned. Files moved outside the app are not automatically reconciled.
+Collections link persistent file IDs to project metadata. They survive changes to scan scope and report unavailable members. Verified in-app moves remap personal metadata, collection memberships, and saved estimates to the destination ID; that location becomes available when scanned. Estimates retain their source fingerprint for review. Files moved outside the app are not automatically reconciled.
+
+Geometry comparison reuses Three.js STL/OBJ/PLY loaders in a bounded worker. It subtracts the mesh minimum corner, quantizes coordinates at 0.00001 model units, sorts vertices within each face and faces within the mesh, and hashes that canonical triangle list. Scale and orientation are retained; appearance and units are excluded. This detects matching triangle exports, not arbitrary shape similarity. A separate fingerprint- and algorithm-bound cache prevents stale results from appearing after rescans. Main-process validation checks that selected candidates leave a keeper in every group, including off-page groups, before transfer review.
 
 ## File transfers
 

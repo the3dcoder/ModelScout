@@ -4,6 +4,7 @@ for (const file of [
   "production-app",
   "organization-app",
   "importers-app",
+  "geometry-app",
 ]) {
   const result = spawnSync(process.execPath, [`tests/${file}.test.cjs`], {
     stdio: "inherit",

@@ -38,6 +38,7 @@ import { SearchTools, SavedSearches, MetadataEditor } from "./LibraryTools";
 import { CostPanel } from "./CostPanel";
 import { MeshPanel } from "./MeshPanel";
 import { CollectionList, CollectionEditor } from "./Collections";
+import { GeometryPanel } from "./GeometryPanel";
 import "./styles.css";
 const api = window.scout;
 const bytes = (n) => {
@@ -83,6 +84,7 @@ function App() {
   const [legalNotices, setLegalNotices] = useState(null);
   const [collectionEdit, setCollectionEdit] = useState("");
   const [collectionIds, setCollectionIds] = useState([]);
+  const [geometryIds, setGeometryIds] = useState([]);
   const [view, setView] = useState("list"),
     [savedSearches, setSavedSearches] = useState([]),
     [searchName, setSearchName] = useState(""),
@@ -309,9 +311,17 @@ function App() {
       setGroups(result.groups);
       setGroupTotal(result.total);
       setGroupPage(typeof page === "number" ? page : 0);
-      setKeepers(
-        Object.fromEntries(result.groups.map((g) => [g.hash, g.files[0].id])),
-      );
+      setKeepers((previous) => ({
+        ...previous,
+        ...Object.fromEntries(
+          result.groups.map((g) => [
+            g.hash,
+            g.files.some((r) => r.id === previous[g.hash])
+              ? previous[g.hash]
+              : g.files[0].id,
+          ]),
+        ),
+      }));
       setModal("duplicates");
     });
   const startPlan = () => {
@@ -338,6 +348,11 @@ function App() {
       setReceipt(result);
       setPlan(null);
       setSelected(new Set());
+      if (
+        active &&
+        result.results.some((r) => r.id === active.id && r.status === "moved")
+      )
+        setActive(null);
       await refresh();
     });
   const addRoots = () =>
@@ -371,7 +386,7 @@ function App() {
       ? `${count(progress.files)} files checked`
       : progress.phase === "archives"
         ? `${count(progress.archivesRead)} / ${count(progress.archiveCount)} archives`
-        : progress.phase === "duplicates"
+        : ["duplicates", "geometry"].includes(progress.phase)
           ? `${count(progress.done)} / ${count(progress.total)} files checked · ${count(progress.cached)} cached`
           : `${count(progress.done)} / ${count(progress.total)} transferred`
     : progress?.phase === "cancelled"
@@ -805,6 +820,16 @@ function App() {
                 Clear
               </button>
               <Button
+                icon={Layers}
+                disabled={!stats.total || running || busy}
+                onClick={() => {
+                  setGeometryIds([...selected]);
+                  setModal("geometry");
+                }}
+              >
+                Matching geometry
+              </Button>
+              <Button
                 icon={Copy}
                 disabled={!stats.total || running || busy}
                 onClick={() =>
@@ -830,7 +855,9 @@ function App() {
                 <strong>{stats.duplicateGroups} exact duplicate groups</strong>{" "}
                 confirmed by SHA-256.
               </span>
-              <button onClick={showGroups}>Review copies</button>
+              <button disabled={running || busy} onClick={showGroups}>
+                Review copies
+              </button>
             </div>
           )}
           <div className="table-area">
@@ -1312,6 +1339,25 @@ function App() {
           </div>
         </Modal>
       )}
+      {modal === "geometry" && (
+        <Modal
+          title="Matching geometry review"
+          wide
+          onClose={() => setModal(null)}
+        >
+          <GeometryPanel
+            ids={geometryIds}
+            running={running || busy}
+            onQueue={(ids) => {
+              setSelected(new Set(ids));
+              setPlan(null);
+              setReceipt(null);
+              setMode("move");
+              setModal("transfer");
+            }}
+          />
+        </Modal>
+      )}
       {modal === "tags" && (
         <Modal title="Organize selected files" onClose={() => setModal(null)}>
           <p>
@@ -1588,7 +1634,7 @@ function App() {
               <button
                 className="icon-button"
                 aria-label="Previous duplicate groups"
-                disabled={groupPage === 0 || busy}
+                disabled={groupPage === 0 || busy || running}
                 onClick={() => showGroups(groupPage - 1)}
               >
                 <ChevronLeft size={18} />
@@ -1596,7 +1642,7 @@ function App() {
               <button
                 className="icon-button"
                 aria-label="Next duplicate groups"
-                disabled={(groupPage + 1) * 50 >= groupTotal || busy}
+                disabled={(groupPage + 1) * 50 >= groupTotal || busy || running}
                 onClick={() => showGroups(groupPage + 1)}
               >
                 <ChevronRight size={18} />
@@ -1640,6 +1686,7 @@ function App() {
             <Button
               icon={ArrowRightLeft}
               className="primary"
+              disabled={busy || running}
               onClick={() => {
                 const ids = groups.flatMap((g) =>
                   g.files

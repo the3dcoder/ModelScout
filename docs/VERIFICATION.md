@@ -7,10 +7,10 @@ Use Windows x64 and Node.js 24.15 or newer. Tests create disposable files under
 
 1. Run npm ci and npm test for scanning, archives, duplicate hashes, exclusive
    verified transfers, cancellation recovery, metadata, collections, caches,
-   cost formulas, and STL edits.
+   cost formulas, STL edits, geometry matching, and keeper validation.
 2. Run npm run build followed by npm run test:app for desktop interactions,
    visible preview completion, galleries, filters, cost and mesh dialogs,
-   collections, referenced assets, and importer loading.
+   collections, referenced assets, importer loading, and paired geometry review.
 3. Run npm run format:check and npm audit --omit=dev.
 4. Run npm run package and npm run test:packaged to verify the same workflows
    against the unpacked release executable, including actual WASM loading and
@@ -19,14 +19,19 @@ Use Windows x64 and Node.js 24.15 or newer. Tests create disposable files under
    WASM hashes against pinned upstream revisions and packages sources/notices
    with the executable. Keep the generated SHA-256 file with the ZIP.
 
-## Local acceptance, 0.3.0
+## Local acceptance, 0.4.0
 
-The Windows source suite has 20 passing core/feature tests. Desktop fixtures cover
+The Windows source suite has 22 passing core/feature tests. Desktop fixtures cover
 scan/preview, reviewed duplicate moves, mocked cloud consent, static galleries,
 failed previews, favorites/tags, saved searches, FDM/resin estimates, profile
 import/export, mesh analysis/edit/export, collection lifecycle, referenced assets,
 OpenCascade previews, Assimp loading, and the license viewer. UI checks include
-normal and minimum supported window sizes.
+normal and minimum supported window sizes. Geometry fixtures compare STL/OBJ/PLY,
+placement and winding changes, scale and shape differences, invalid files,
+active-worker cancellation, cache reuse, changed-fingerprint invalidation, and
+saved-estimate relocation. Desktop regression fixtures verify paired previews,
+geometry keeper protection across 21 groups, and exact-duplicate keeper choices
+across 51 groups. Source and packaged desktop suites each cover these workflows.
 
 The portable build is unsigned. Source tests and local packaged tests do not
 establish GitHub-hosted CI, code-signing, or every format/model combination. Cloud

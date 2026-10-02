@@ -153,6 +153,7 @@ else
       userData: app.getPath("userData"),
       hasKey: !!apiKey,
       savedSearches: catalog.savedSearches(),
+      lastGeometryCheck: catalog.setting("lastGeometryCheck"),
       view: catalog.setting("view") || "list",
       backupPath: catalog.backupPath || null,
     }));
@@ -298,6 +299,31 @@ else
           job = null;
         });
       return true;
+    });
+    const geometry = require("./geometry.cjs");
+    handle("geometryCompare", (options = {}) => {
+      requireIdle();
+      if (
+        options.ids &&
+        (!Array.isArray(options.ids) || options.ids.length > 10000)
+      )
+        throw new Error("Choose up to 10,000 files.");
+      thumbnails.stop();
+      job = new AbortController();
+      geometry
+        .compareGeometry(catalog, options, job.signal, progress)
+        .catch((e) =>
+          progress({ running: false, phase: "failed", message: e.message }),
+        )
+        .finally(() => {
+          job = null;
+        });
+      return true;
+    });
+    handle("geometryGroups", (page) => geometry.groups(catalog, page));
+    handle("geometrySelection", (ids) => {
+      requireIdle();
+      return geometry.validateSelection(catalog, ids);
     });
     handle("duplicateGroups", (page = 0) => ({
       total: catalog.stats().duplicateGroups,
