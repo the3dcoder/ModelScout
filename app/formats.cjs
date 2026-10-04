@@ -132,15 +132,21 @@ function suggest(name, folder = "") {
     confidence: "Unknown",
   };
 }
-function fileRecord(filePath, stat, root, member = "") {
+function fileRecord(filePath, stat, root, member = "", mode = "models") {
   const name = member
     ? path.posix.basename(member.replaceAll("\\", "/"))
     : path.basename(filePath);
   const ext = path.extname(name).slice(1).toLowerCase();
-  const guessed = suggest(
-    name,
-    member ? path.posix.dirname(member) : path.dirname(filePath),
-  );
+  const guessed =
+    mode === "game"
+      ? require("./game-formats.cjs").gameDetails(
+          name,
+          member || path.relative(root, filePath),
+        )
+      : suggest(
+          name,
+          member ? path.posix.dirname(member) : path.dirname(filePath),
+        );
   return {
     path: filePath,
     member,

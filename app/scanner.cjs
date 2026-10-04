@@ -3,11 +3,12 @@ const path = require("node:path");
 const { EXTENSIONS, EXTRA_EXTENSIONS, fileRecord } = require("./formats.cjs");
 const { listArchive } = require("./archive.cjs");
 async function scan(
-  { roots, archives = false, extras = false },
+  { roots, archives = false, extras = false, mode = "models" },
   catalog,
   signal,
   onProgress,
 ) {
+  if (!["models", "game"].includes(mode)) throw new Error("Unknown scan mode.");
   const extensions = new Set([
     ...EXTENSIONS,
     ...(extras ? EXTRA_EXTENSIONS : []),
@@ -34,6 +35,7 @@ async function scan(
   catalog.beginScan();
   const state = {
     phase: "files",
+    mode,
     directories: 0,
     files: 0,
     matches: 0,
@@ -81,16 +83,17 @@ async function scan(
         if (!entry.isFile()) continue;
         state.files++;
         const ext = path.extname(entry.name).slice(1).toLowerCase();
-        if (extensions.has(ext)) {
+        if (["zip", "7z", "rar"].includes(ext)) {
+          catalog.addLocation(file, "archive", root);
+          if (archives) packs.push({ file, root });
+        }
+        if (mode === "game" || extensions.has(ext)) {
           try {
-            catalog.add(fileRecord(file, await fs.stat(file), root));
+            catalog.add(fileRecord(file, await fs.stat(file), root, "", mode));
             state.matches++;
           } catch (e) {
             error(file, e);
           }
-        } else if (["zip", "7z", "rar"].includes(ext)) {
-          catalog.addLocation(file, "archive", root);
-          if (archives) packs.push({ file, root });
         }
         emit();
       }
@@ -115,6 +118,7 @@ async function scan(
           file,
           async (entry) => {
             if (
+              mode === "game" ||
               extensions.has(path.extname(entry.name).slice(1).toLowerCase())
             ) {
               catalog.add(
@@ -127,6 +131,7 @@ async function scan(
                   },
                   root,
                   entry.name,
+                  mode,
                 ),
               );
               state.matches++;
@@ -143,6 +148,7 @@ async function scan(
     }
   }
   catalog.finishScan(signal.aborted);
+  if (signal.aborted) Object.assign(state, catalog.setting("lastScan"));
   state.phase = signal.aborted ? "cancelled" : "complete";
   state.running = false;
   state.restoredPrevious = signal.aborted;

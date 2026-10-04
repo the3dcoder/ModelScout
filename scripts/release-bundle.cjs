@@ -113,6 +113,18 @@ async function download(url) {
     `${hash}  ${executable}\n`,
   );
   const zip = path.join(out, `Model-Scout-${version}-Windows-x64.zip`);
+  if (
+    await fs.stat(zip).then(
+      () => true,
+      (e) => {
+        if (e.code === "ENOENT") return false;
+        throw e;
+      },
+    )
+  )
+    throw new Error(
+      "Release ZIP already exists. Retain it and choose a fresh output before bundling again.",
+    );
   const quote = (value) => "'" + value.replaceAll("'", "''") + "'";
   const entries = (await fs.readdir(content))
     .map((file) => quote(path.join(content, file)))
@@ -123,7 +135,7 @@ async function download(url) {
       "-NoProfile",
       "-NonInteractive",
       "-Command",
-      `Compress-Archive -LiteralPath @(${entries}) -DestinationPath ${quote(zip)} -Force`,
+      `Compress-Archive -LiteralPath @(${entries}) -DestinationPath ${quote(zip)}`,
     ],
     { stdio: "inherit", windowsHide: true },
   );

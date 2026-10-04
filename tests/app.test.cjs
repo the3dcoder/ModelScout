@@ -115,22 +115,40 @@ const { fixture, STL, zip } = require("./helpers.cjs");
       .getByRole("button", { name: "Queue extras for review folder" })
       .click();
     await page.getByLabel("Destination folder").fill(dest);
+    if (process.env.SCOUT_RETAIN_FIXTURES === "1")
+      await page.getByLabel("Action").selectOption("copy");
     await page
       .getByRole("button", { name: "Review 1 files", exact: true })
       .click();
-    await page.getByRole("button", { name: "Confirm move of 1 files" }).click();
+    await page
+      .getByRole("button", {
+        name:
+          process.env.SCOUT_RETAIN_FIXTURES === "1"
+            ? "Confirm copy of 1 files"
+            : "Confirm move of 1 files",
+      })
+      .click();
     await page.getByText("1 of 1 completed", { exact: true }).waitFor();
     await page.getByRole("button", { name: "Done", exact: true }).click();
     const remaining = (await fs.readdir(source)).filter(
       (n) => n === "bracket.stl" || n === "bracket-copy.stl",
     );
-    assert.equal(remaining.length, 1);
+    assert.equal(
+      remaining.length,
+      process.env.SCOUT_RETAIN_FIXTURES === "1" ? 2 : 1,
+    );
     assert.equal(await page.locator("dialog[open]").count(), 0);
     await page.getByLabel("Look inside archives").check();
     await page
       .getByRole("button", { name: "Search locations", exact: true })
       .click();
-    await page.getByText("4 files discovered").waitFor();
+    await page
+      .getByText(
+        process.env.SCOUT_RETAIN_FIXTURES === "1"
+          ? "5 files discovered"
+          : "4 files discovered",
+      )
+      .waitFor();
     await page.getByLabel("Search found files").fill("archived.stl");
     await page.locator("tbody tr").first().waitFor();
     await page.getByRole("button", { name: /archived\.stl/ }).click();
@@ -147,7 +165,9 @@ const { fixture, STL, zip } = require("./helpers.cjs");
           "category notes",
           "mocked AI consent and payload",
           "duplicate keeper review",
-          "verified move",
+          process.env.SCOUT_RETAIN_FIXTURES === "1"
+            ? "verified copy; move execution omitted"
+            : "verified move",
           "archive opt-in",
           "archive preview",
         ],

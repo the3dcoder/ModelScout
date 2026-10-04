@@ -1,12 +1,12 @@
 # Model Scout
 
-A local Windows workbench for finding, previewing, and organizing 3D models and printing files.
+A local Windows workbench for finding, previewing, and organizing 3D models, printing files, and game asset libraries.
 
 Search folders or drives, browse a cached gallery, keep multi-part projects together, and review exactly what will be copied or moved. Model Scout also includes filament and resin cost profiles and basic STL inspection and editing.
 
 ## Run it
 
-Use Windows 10/11 x64. Build the release ZIP with the commands below, or download a published build when one is available under [Releases](https://github.com/the3dcoder/ModelScout/releases). Extract the complete ZIP and run **Model-Scout-0.4.1.exe**. No installer is required. The current build is unsigned.
+Use Windows 10/11 x64. Build the release ZIP with the commands below, or download a published build when one is available under [Releases](https://github.com/the3dcoder/ModelScout/releases). Extract the complete ZIP and run **Model-Scout-0.5.2.exe**. No installer is required. The current build is unsigned.
 
 The portable executable stores its catalog, thumbnails, profiles, and transfer logs in `%APPDATA%\Model Scout`. Back up that folder while the app is closed if you want to preserve your library metadata. Source models stay in their original folders until you confirm a move.
 
@@ -17,7 +17,60 @@ npm ci
 npm start
 ```
 
-## Organize a library
+## Create a unique game asset library
+
+1. Select **Game asset library · all files**, add folders, then **Search locations**.
+   This mode retains every regular file, including unknown extensions and
+   extensionless license files. Links/junctions are skipped. Archive contents
+   remain opt-in; the archive containers themselves are indexed.
+2. Browse by family, extension, suggested category, tags or filename. Common
+   raster images up to 8 MiB have local on-demand previews; 3D thumbnails retain
+   their existing cache. SVG/editor formats and unsupported media remain listed.
+3. Choose **Create asset library** and select the entire scan or current filters.
+   Choose an existing parent outside the scanned folders. Preparation creates a
+   new timestamped folder, hashes each selected file, and writes a reviewable
+   catalog and full copy plan. A failed or cancelled catalog cannot be copied.
+4. Review the unique count, size, sample organization, full copy plan and reference
+   warnings. Confirm the review checkbox, then **Copy unique assets to new library**.
+   Copies use new category/family/hash-prefix folders and shortened readable names with full
+   SHA-256 suffixes. Identical category/family levels are combined. Exactly one
+   copy is planned per SHA-256; every original remains in place. Targets are never
+   overwritten, source fingerprints/hashes are rechecked, and copies are verified.
+5. Give another chat the new folder's **START_HERE.md** path. It links to smaller
+   category indexes, split into at most 1,000 entries each. `assets.jsonl` contains one canonical asset per hash;
+   `sources.jsonl` retains every source/duplicate alias, pack mapping, tags and
+   collection provenance. `copy-plan.jsonl` records full destinations;
+   `copy-receipt.json` and `copy-journal.jsonl` establish which copies succeeded.
+
+The **Unique files** view collapses hash-confirmed duplicates within the active
+filters. Unhashed files stay visible. Run **Check duplicates** or prepare an asset
+library to establish hashes; a filename match alone never removes a result.
+Preparing from this view expands the duplicate collapse, preserving every matching
+source alias and freshly verifying its content. The remaining file filters apply.
+
+Categories inferred from source folders and file extensions require review.
+When `00_CATALOG/FILE_INDEX.jsonl` exists, bounded historical original-path/pack
+mappings are retained; its old hashes are never trusted for duplicate decisions.
+Historical mappings are information about earlier organization, not proof that
+old source paths still exist. License documents are indexed, but licensing is not
+inferred. Preparation, catalog export and copying stay local.
+
+This is an organized source library. Phaser atlases/fonts and Tiled maps can need
+companion files and relative paths, so reference-bearing formats are flagged.
+The unique library changes names and paths; it does not rewrite references or
+convert source/editor assets into runtime-ready files. Consult the aliases to
+reconstruct or repair asset sets before use. See the primary
+[Phaser loader documentation](https://docs.phaser.io/phaser/concepts/loader) and
+[Tiled map format](https://doc.mapeditor.org/en/stable/reference/json-map-format/).
+
+Cancellation retains generated files and writes incomplete status; copying stops
+between operations and retains originals. A process exit can leave a partial
+library; consult the journal and prepare a fresh library to retry. Plans are valid
+for 24 hours in the current app session and cannot be executed twice. Keep existing
+partial outputs until you decide how to handle them. Review free disk space for
+the assets and catalogs before copying.
+
+## Organize a model library
 
 1. Add search folders or drives. ZIP scanning is optional; 7z and RAR additionally require a local [7-Zip installation](https://www.7-zip.org/).
 2. Search filenames by default, without inheriting matches from parent folders or archives. Matching folder and ZIP/7z/RAR names appear separately; their contents are not included automatically. Choose **Paths** or **All file details** to search broader fields explicitly. Combine tags with all/any/exclude filters, mark favorites, and save searches.
@@ -62,6 +115,7 @@ Scanning, hashing, thumbnails, costs, and mesh tools run locally. There is no te
 ## Development and releases
 
 ```powershell
+$env:SCOUT_RETAIN_FIXTURES = "1"
 npm test
 npm run build
 npm run test:app
@@ -72,6 +126,18 @@ npm run release:bundle
 ```
 
 Tests use generated fixtures and isolated profiles. They do not use a personal model library. The public release ZIP includes the executable, licenses, and corresponding source snapshots for the native importers. Distribute that complete ZIP. See [CONTRIBUTING.md](CONTRIBUTING.md), [verification](docs/VERIFICATION.md), and [importer build instructions](docs/BUILD_IMPORTERS.md).
+
+The retained-fixture mode above omits source-removal/metadata-removal checks and
+tests copying in the duplicate desktop flow. CI uses this mode. Only unset it
+when deletion of generated test fixtures is authorized. Builds retain earlier
+versioned frontend outputs; packaging uses only the current Vite manifest.
+An existing unpacked release or release ZIP is preserved: choose a fresh output
+before packaging or bundling the same version again.
+
+The unique library is a snapshot of the selected files at preparation time.
+Prepare again after adding or editing source assets; excluded duplicate aliases
+are recorded as they existed when hashed. Canonical sources are rechecked during
+copying. This feature does not continuously synchronize a changing directory.
 
 Current limits: Windows x64 is the tested target; nested archives are not expanded; preview reads stop at 128 MiB; complex CAD/native application files may require their original software. Transfers are logged but do not have automatic undo. Scans skip symbolic links and junctions inside the search tree. Shape similarity, advanced mesh repair, website synchronization, and direct slicer integrations remain [future work](docs/FEATURE_RESEARCH.md).
 

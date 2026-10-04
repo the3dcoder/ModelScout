@@ -128,15 +128,17 @@ const { fixture, STL } = require("./helpers.cjs");
       .locator(".collection-summary")
       .getByText("2 available", { exact: false })
       .waitFor();
-    await page
-      .getByRole("button", { name: "Edit collection", exact: true })
-      .click();
-    await dialog
-      .getByRole("button", { name: "Remove collection", exact: true })
-      .click();
-    await dialog
-      .getByRole("button", { name: "Confirm removal of collection only" })
-      .click();
+    if (process.env.SCOUT_RETAIN_FIXTURES !== "1") {
+      await page
+        .getByRole("button", { name: "Edit collection", exact: true })
+        .click();
+      await dialog
+        .getByRole("button", { name: "Remove collection", exact: true })
+        .click();
+      await dialog
+        .getByRole("button", { name: "Confirm removal of collection only" })
+        .click();
+    }
     assert.equal((await page.evaluate(() => window.scout.stats())).total, 2);
     assert.deepEqual(errors, []);
     console.log(
@@ -149,7 +151,9 @@ const { fixture, STL } = require("./helpers.cjs");
           "referenced assets",
           "verified copy",
           "rescan",
-          "collection removal",
+          process.env.SCOUT_RETAIN_FIXTURES === "1"
+            ? "collection retained; removal omitted"
+            : "collection removal",
         ],
       }),
     );

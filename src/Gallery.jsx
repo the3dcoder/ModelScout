@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { RasterPreview, hasRasterPreview } from "./RasterPreview";
 import {
   Box,
   Star,
@@ -111,7 +112,11 @@ export function Gallery({
               onClick={() => onOpen(r)}
             >
               <div className="card-image">
-                {r.hasThumbnail ? (
+                {hasRasterPreview(r) &&
+                (visible.includes(r.id) || prepare) &&
+                !paused ? (
+                  <RasterPreview key={r.id} file={r} />
+                ) : r.hasThumbnail ? (
                   <img
                     src={`scout://app/thumbnail/${r.id}?v=${encodeURIComponent(r.version)}`}
                     alt={"3D preview of " + r.name}

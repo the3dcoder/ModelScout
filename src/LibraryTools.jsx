@@ -6,6 +6,9 @@ export function SearchTools({ query, onFilter, tags, onSave }) {
   const include = query.tags || [],
     exclude = query.excludeTags || [];
   const chips = [
+    ...(query.family
+      ? [{ label: query.family, remove: () => onFilter({ family: "" }) }]
+      : []),
     ...(query.category
       ? [{ label: query.category, remove: () => onFilter({ category: "" }) }]
       : []),
@@ -49,6 +52,7 @@ export function SearchTools({ query, onFilter, tags, onSave }) {
                 ext: "",
                 category: "",
                 kind: "",
+                family: "",
                 collection: "",
                 tags: [],
                 excludeTags: [],
