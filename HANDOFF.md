@@ -72,7 +72,12 @@ Hosted checkpoint: paired runs on both initial heads disagree on the cancelled
 mode UI check: one passes while one times out waiting for the family selector.
 Core/build checks pass. Ten additional local game workflows and a renderer run
 at 6x CPU throttling pass. Progress/metadata failure diagnostics were added;
-investigate this race before treating hosted desktop validation as complete.
+the diagnostic head `c2d0db6` passed both hosted Windows runs
+[37173760635](https://github.com/the3dcoder/ModelScout/actions/runs/37173760635)
+and [37173762458](https://github.com/the3dcoder/ModelScout/actions/runs/37173762458).
+Read-only tracing found no confirmed production race. Keep the diagnostics and
+investigate if the earlier intermittent timeout recurs; do not claim its cause
+was fixed. No production code changed after the verified 0.5.2 bundle.
 
 See [README](README.md), [verification](docs/VERIFICATION.md) and
 [roadmap](docs/ROADMAP.md) for current product behavior and evidence boundaries.

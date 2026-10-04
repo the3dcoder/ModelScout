@@ -53,6 +53,13 @@ failed newly added tests before fixes and now pass. Coverage includes an empty
 scan root, stale duplicate aliases, process-reopen mode recovery, and desktop
 preparation from unique results.
 
+Two earlier hosted runs intermittently timed out on the cancelled-mode family
+selector check while paired runs on identical commits passed. Ten repeated local
+game workflows and a 6x renderer-throttled run passed. Failure diagnostics were
+retained; both hosted Windows runs on diagnostic head `c2d0db6` passed. No
+production race or root cause was confirmed, so this is a known verification
+uncertainty rather than a claimed application fix.
+
 A read-only large-library scan found 201,335 files across 609 directories, with
 zero errors, in 25.09 seconds; average unfiltered gallery-page query was 19.42 ms.
 A separate complete SHA-256 pass found 160,096 unique hashes and 41,239 extra
