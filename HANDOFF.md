@@ -48,10 +48,13 @@ core move/relocation tests and desktop source/collection removal. The owner has
 not answered the deletion exception question; do not run those remaining
 destructive desktop workflows without approval. CI uses retained-fixture mode.
 
-Next: push a PR and verify hosted CI. Do not copy
-the owner's assets; they will choose the destination and use the updated feature
-themselves. Keep local candidate builds/artifacts. The unique library is a snapshot
-at preparation time; it does not continuously synchronize edited source files.
+Delivery: [PR #3](https://github.com/the3dcoder/ModelScout/pull/3) is open and
+attached to the app task. Check its live Windows checks for hosted verification;
+the local checks below cover the actual source and packaged build. After review,
+the owner can extract the complete ZIP, select Game asset library, scan, choose
+Create asset library, prepare, then confirm the reviewed copy. Do not run that
+copy on their behalf. Keep local candidates/artifacts. The unique library is a
+snapshot at preparation time; it does not continuously synchronize source files.
 
 Review checkpoint: three P2 findings reproduced with failing tests, then fixed:
 unique-view preparation now expands only the display collapse to retain aliases;
