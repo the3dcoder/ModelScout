@@ -7,6 +7,20 @@ GitHub had no open issues or pull requests at assessment time. That does not mea
 the product backlog is empty. The items below distinguish reproduced defects
 from proposed features. The reliability fixes below are implemented in 0.4.1.
 
+## 0.5.2 game asset library
+
+Implemented: all-regular-file game scanning, family/extensionless filters, local
+raster previews, unique results, and reviewed creation of a new category/family
+library with one freshly verified copy per SHA-256. Markdown/JSONL catalogs keep
+source aliases, optional historical pack paths, provenance and bounded category
+indexes. Source files remain untouched. Preparation expands unique-result
+collapsing to retain aliases, checks all scanned roots, and scan recovery retains
+the previous catalog mode and locations.
+
+Reference rewriting and source/editor conversion remain future work. The current
+library is a source inventory and verified copy, with reference review flags;
+it does not claim ready-to-load Phaser assets or continuous synchronization.
+
 ## 0.4.1 resolution
 
 Filename search is now the default. Direct folder and archive name matches appear

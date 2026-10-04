@@ -113,8 +113,13 @@ class Catalog {
   beginScan() {
     this.flush();
     this.db.exec(
-      "BEGIN; DROP TABLE IF EXISTS scan_backup; CREATE TABLE scan_backup AS SELECT * FROM files; DROP TABLE IF EXISTS locations_backup; CREATE TABLE locations_backup AS SELECT * FROM locations; DELETE FROM files; DELETE FROM locations; COMMIT",
+      "BEGIN; DROP TABLE IF EXISTS scan_backup; CREATE TABLE scan_backup AS SELECT * FROM files; DROP TABLE IF EXISTS locations_backup; CREATE TABLE locations_backup AS SELECT * FROM locations; DELETE FROM files; DELETE FROM locations",
     );
+    this.setting(
+      "scanPrevious",
+      this.setting("lastScan") || { mode: "models", roots: [] },
+    );
+    this.db.exec("COMMIT");
   }
   finishScan(restore = false) {
     this.flush();
@@ -125,10 +130,22 @@ class Catalog {
     ) {
       this.db.exec("BEGIN");
       try {
-        if (restore)
+        if (restore) {
           this.db.exec(
             "DELETE FROM files; INSERT INTO files SELECT * FROM scan_backup",
           );
+          const previous = this.setting("scanPrevious");
+          const attempted = this.setting("lastScan");
+          if (previous)
+            this.setting("lastScan", {
+              ...previous,
+              attemptedMode: attempted?.mode,
+              attemptedRoots: attempted?.roots || [],
+              phase: "cancelled",
+              running: false,
+              restoredPrevious: true,
+            });
+        }
         if (
           this.db
             .prepare(
@@ -142,6 +159,7 @@ class Catalog {
             );
           this.db.exec("DROP TABLE locations_backup");
         }
+        this.setting("scanPrevious", null);
         this.db.exec("DROP TABLE scan_backup; COMMIT");
         return true;
       } catch (e) {
@@ -183,7 +201,9 @@ class Catalog {
   }
   get(id) {
     return present(
-      this.db.prepare("SELECT " + FIELDS + FROM + "WHERE f.id=?").get(id),
+      (this.getStatement ||= this.db.prepare(
+        "SELECT " + FIELDS + FROM + "WHERE f.id=?",
+      )).get(id),
     );
   }
   setting(key, value) {
@@ -233,11 +253,24 @@ class Catalog {
     }
     if (ext) {
       clauses.push("f.ext=?");
-      params.push(ext);
+      params.push(ext === "(none)" ? "" : ext);
     }
     if (category) {
       clauses.push("COALESCE(n.category,f.category)=?");
       params.push(category);
+    }
+    if (options.family) {
+      clauses.push("f.family=?");
+      params.push(String(options.family));
+    }
+    if (kind === "unique") {
+      const scope = this.filters({ ...options, kind: "" });
+      clauses.push(
+        "(f.hash IS NULL OR f.id IN (SELECT MIN(f.id) FROM files f LEFT JOIN notes n USING(id)" +
+          scope.where +
+          " GROUP BY f.hash))",
+      );
+      params.push(...scope.params);
     }
     if (kind === "archive") clauses.push("f.member<>''");
     if (kind === "loose") clauses.push("f.member=''");
@@ -360,6 +393,11 @@ class Catalog {
           "SELECT ext,COUNT(*) AS count FROM files GROUP BY ext ORDER BY count DESC",
         )
         .all(),
+      families: this.db
+        .prepare(
+          "SELECT family,COUNT(*) AS count FROM files GROUP BY family ORDER BY family",
+        )
+        .all(),
       categories: this.db
         .prepare(
           "SELECT COALESCE(n.category,f.category) AS category,COUNT(*) AS count FROM files f LEFT JOIN notes n USING(id) GROUP BY COALESCE(n.category,f.category) ORDER BY category",
@@ -394,6 +432,24 @@ class Catalog {
       .prepare("SELECT f.id" + FROM + where + " ORDER BY f.id")
       .all(...params)
       .map((r) => r.id);
+  }
+  *iterateFiles(options = {}) {
+    const { where, params } = this.filters(options);
+    const statement = this.db.prepare(
+      "SELECT " +
+        FIELDS +
+        FROM +
+        where +
+        (where ? " AND " : " WHERE ") +
+        "f.id>? ORDER BY f.id LIMIT 512",
+    );
+    let after = "";
+    for (;;) {
+      const rows = statement.all(...params, after);
+      if (!rows.length) return;
+      after = rows[rows.length - 1].id;
+      for (const row of rows) yield present(row);
+    }
   }
   queryGeometryRows() {
     return this.db
@@ -478,6 +534,26 @@ class Catalog {
     this.db.prepare("UPDATE files SET hash=? WHERE id=?").run(hash, id);
     this.db.prepare("UPDATE asset_cache SET hash=? WHERE id=?").run(hash, id);
   }
+  setHashes(entries) {
+    if (!entries.length) return;
+    this.flush();
+    const file = this.db.prepare("UPDATE files SET hash=? WHERE id=?"),
+      cache = this.db.prepare("UPDATE asset_cache SET hash=? WHERE id=?");
+    this.db.exec("BEGIN");
+    try {
+      for (const { id, hash } of entries) {
+        const row = this.get(id);
+        if (!row) continue;
+        this.ensureCache(row);
+        file.run(hash, id);
+        cache.run(hash, id);
+      }
+      this.db.exec("COMMIT");
+    } catch (e) {
+      this.db.exec("ROLLBACK");
+      throw e;
+    }
+  }
   thumbnail(id) {
     return this.db.prepare("SELECT c.thumbnail" + FROM + "WHERE f.id=?").get(id)
       ?.thumbnail;
@@ -538,6 +614,7 @@ class Catalog {
         "searchScope",
         "ext",
         "category",
+        "family",
         "kind",
         "sort",
         "direction",

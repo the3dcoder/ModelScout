@@ -4,6 +4,8 @@
 
 Use Windows x64 and Node.js 24.15 or newer. Tests create disposable files under
 .test-data and isolated app profiles. They never use a live user catalog.
+Set `$env:SCOUT_RETAIN_FIXTURES='1'` before these commands unless fixture removal
+has been explicitly authorized. Keep generated outputs and release candidates.
 
 1. Run npm ci and npm test for scanning, archives, duplicate hashes, exclusive
    verified transfers, cancellation recovery, metadata, collections, caches,
@@ -19,7 +21,52 @@ Use Windows x64 and Node.js 24.15 or newer. Tests create disposable files under
    WASM hashes against pinned upstream revisions and packages sources/notices
    with the executable. Keep the generated SHA-256 file with the ZIP.
 
-## Local acceptance, 0.4.1
+## Local acceptance, 0.5.2
+
+Use `SCOUT_RETAIN_FIXTURES=1` to retain generated originals and collections.
+This mode passes 31 core/feature tests and all eight source desktop workflows,
+plus the same eight workflows against the unpacked Windows release executable.
+It skips four core move/relocation checks, substitutes copying for the duplicate
+move UI check, and omits collection-removal UI execution. CI uses this mode.
+Do not describe it as complete move/delete coverage. The full 31-test source
+suite also passed locally in this session, but an attempted anchored negative
+name filter failed to exclude its destructive fixture checks. The behavior was
+reproduced in a harmless two-test fixture; positive `--test-skip-pattern` exclusions
+were verified before enabling retained-fixture checks. That earlier 31-test run
+preceded the category chunking regression added in 0.5.2. No personal libraries or
+live app profiles were used by tests.
+
+New coverage: model mode unchanged; all-file game discovery, unknown/extensionless
+types, opt-in archive members, family/saved filters, scoped unique results,
+fresh SHA-256 deduplication, aliases/historical paths, category-index writer
+rotation, reviewed copy, source retention, changed/tampered-plan rejection,
+1,000-entry category chunks and hash-prefix asset folders,
+destination containment, cancellation, raster previews/gallery, persisted scan
+mode and minimum supported window size. Copy tests verify actual file bytes,
+source fingerprints, catalogs and receipts. Native dialogs/reveal and cloud calls
+remain intercepted or mocked where applicable.
+
+Independent review identified three additional regressions: unique-view
+preparation omitted aliases, filtered destination checks omitted other scan
+roots, and cancelled mode changes mislabeled the restored catalog. All three
+failed newly added tests before fixes and now pass. Coverage includes an empty
+scan root, stale duplicate aliases, process-reopen mode recovery, and desktop
+preparation from unique results.
+
+A read-only large-library scan found 201,335 files across 609 directories, with
+zero errors, in 25.09 seconds; average unfiltered gallery-page query was 19.42 ms.
+A separate complete SHA-256 pass found 160,096 unique hashes and 41,239 extra
+copies, with zero read/fingerprint errors. Timing includes storage/cache effects.
+This does not establish the runtime of a full-library prepared export or copy;
+development did not copy the owner's library. Receipts and paths remain private
+under ignored artifacts.
+
+Format checks, build, dependency audit and manifest-based portable packaging
+passed. Packaging retains earlier generated outputs and includes only current
+manifest files. The build is unsigned. Maps/atlases/projects are flagged for
+reference review; reference rewriting and source conversion are not implemented.
+
+## Historical local acceptance, 0.4.1
 
 The Windows source suite has 27 passing core/feature tests. Seven source desktop
 workflows and the same seven packaged workflows pass. Desktop fixtures cover

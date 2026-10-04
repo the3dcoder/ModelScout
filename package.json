@@ -1,17 +1,17 @@
 {
   "name": "model-scout",
-  "version": "0.4.1",
+  "version": "0.5.2",
   "private": true,
-  "description": "A local 3D file discovery and organization workbench",
+  "description": "A local model and game asset discovery and organization workbench",
   "author": "Big Bwain LLC",
   "license": "MIT",
   "main": "app/main.cjs",
   "scripts": {
     "build": "vite build",
     "start": "npm run build && electron .",
-    "test": "node --test tests/core.test.cjs tests/enhancements.test.cjs tests/organization.test.cjs tests/geometry.test.cjs tests/reliability.test.cjs",
-    "test:app": "node tests/app.test.cjs && node tests/library-app.test.cjs && node tests/production-app.test.cjs && node tests/organization-app.test.cjs && node tests/importers-app.test.cjs && node tests/geometry-app.test.cjs && node tests/reliability-app.test.cjs",
-    "package": "npm run licenses && npm run build && electron-builder --win portable --x64",
+    "test": "node scripts/test-core.cjs",
+    "test:app": "node tests/app.test.cjs && node tests/library-app.test.cjs && node tests/production-app.test.cjs && node tests/organization-app.test.cjs && node tests/importers-app.test.cjs && node tests/geometry-app.test.cjs && node tests/reliability-app.test.cjs && node tests/game-assets-app.test.cjs",
+    "package": "npm run licenses && npm run build && node scripts/package.cjs",
     "format:check": "prettier --check app src tests scripts vite.config.mjs package.json",
     "test:packaged": "node scripts/test-packaged.cjs",
     "licenses": "node scripts/licenses.cjs",
@@ -21,12 +21,12 @@
     "appId": "com.bigbwain.modelscout",
     "productName": "Model Scout",
     "directories": {
-      "output": "release/0.4.1"
+      "output": "release/0.5.2"
     },
     "files": [
       "app/**/*",
       "src/costing.mjs",
-      "dist/**/*",
+      "dist/0.5.2/**/*",
       "package.json",
       "docs/THIRD_PARTY.md",
       "notices/**/*",

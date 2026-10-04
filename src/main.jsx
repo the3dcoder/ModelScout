@@ -39,6 +39,8 @@ import { CostPanel } from "./CostPanel";
 import { MeshPanel } from "./MeshPanel";
 import { CollectionList, CollectionEditor } from "./Collections";
 import { GeometryPanel } from "./GeometryPanel";
+import { AssetLibrary } from "./AssetLibrary";
+import { RasterPreview, hasRasterPreview } from "./RasterPreview";
 import "./styles.css";
 const api = window.scout;
 const bytes = (n) => {
@@ -55,7 +57,7 @@ function Button({ icon: Icon, children, className = "", ...props }) {
     </button>
   );
 }
-function Modal({ title, children, onClose, wide = false }) {
+function Modal({ title, children, onClose, wide = false, canClose = true }) {
   const ref = useRef();
   useEffect(() => {
     ref.current.showModal();
@@ -64,13 +66,17 @@ function Modal({ title, children, onClose, wide = false }) {
     <dialog
       ref={ref}
       className={wide ? "modal wide" : "modal"}
-      onCancel={onClose}
+      onCancel={(event) => {
+        event.preventDefault();
+        if (canClose) onClose();
+      }}
     >
       <div className="modal-title">
         <h2>{title}</h2>
         <button
           className="icon-button"
           aria-label="Close dialog"
+          disabled={!canClose}
           onClick={onClose}
         >
           <X size={20} />
@@ -96,6 +102,8 @@ function App() {
     [manualRoot, setManualRoot] = useState(""),
     [archives, setArchives] = useState(false),
     [extras, setExtras] = useState(false);
+  const [scanMode, setScanMode] = useState("models");
+  const [catalogMode, setCatalogMode] = useState("models");
   const [progress, setProgress] = useState(null),
     [stats, setStats] = useState({ extensions: [], categories: [] }),
     [rows, setRows] = useState([]),
@@ -194,10 +202,13 @@ function App() {
             : data.lastScan,
         );
         setRoots(data.lastScan.roots || []);
+        setScanMode(data.lastScan.mode || "models");
+        setCatalogMode(data.lastScan.mode || "models");
       }
     });
     refresh();
     return api.onProgress((data) => {
+      if (data.mode) setCatalogMode(data.mode);
       setProgress(data);
       if (!refreshTimer.current)
         refreshTimer.current = setTimeout(() => {
@@ -309,8 +320,14 @@ function App() {
     run(async () => {
       setSelected(new Set());
       setActive(null);
-      setQuery((q) => ({ ...q, page: 0 }));
-      await api.scan({ roots, archives, extras });
+      setQuery((q) => ({
+        ...q,
+        page: 0,
+        ...(scanMode !== catalogMode
+          ? { category: "", family: "", ext: "", kind: "", collection: "" }
+          : {}),
+      }));
+      await api.scan({ roots, archives, extras, mode: scanMode });
     });
   const showGroups = (page = 0) =>
     run(async () => {
@@ -395,9 +412,11 @@ function App() {
       ? `${count(progress.files)} files checked`
       : progress.phase === "archives"
         ? `${count(progress.archivesRead)} / ${count(progress.archiveCount)} archives`
-        : ["duplicates", "geometry"].includes(progress.phase)
-          ? `${count(progress.done)} / ${count(progress.total)} files checked · ${count(progress.cached)} cached`
-          : `${count(progress.done)} / ${count(progress.total)} transferred`
+        : progress.phase === "assetCatalog"
+          ? `${count(progress.done)} / ${count(progress.total)} assets cataloged`
+          : ["duplicates", "geometry"].includes(progress.phase)
+            ? `${count(progress.done)} / ${count(progress.total)} files checked · ${count(progress.cached)} cached`
+            : `${count(progress.done)} / ${count(progress.total)} transferred`
     : progress?.phase === "cancelled"
       ? progress.restoredPrevious
         ? "Cancelled · previous catalog restored"
@@ -417,7 +436,10 @@ function App() {
           <div>
             <strong>Model Scout</strong>
             <span>
-              Your 3D file workbench {info?.version ? `· v${info.version}` : ""}
+              {catalogMode === "game"
+                ? "Your asset library workbench"
+                : "Your 3D file workbench"}{" "}
+              {info?.version ? `· v${info.version}` : ""}
             </span>
           </div>
         </div>
@@ -498,6 +520,24 @@ function App() {
             </button>
           </form>
           <div className="scan-options">
+            <label className="field-label">
+              Search for
+              <select
+                aria-label="Scan mode"
+                value={scanMode}
+                disabled={running}
+                onChange={(e) => setScanMode(e.target.value)}
+              >
+                <option value="models">3D models & printing files</option>
+                <option value="game">Game asset library · all files</option>
+              </select>
+            </label>
+            {scanMode === "game" && (
+              <p className="tiny muted">
+                Images, audio, maps, fonts, code, editor sources, licenses and
+                unknown types. No extension exclusions.
+              </p>
+            )}
             <label className="check-label">
               <input
                 type="checkbox"
@@ -513,7 +553,7 @@ function App() {
               <input
                 type="checkbox"
                 checked={extras}
-                disabled={running}
+                disabled={running || scanMode === "game"}
                 onChange={(e) => setExtras(e.target.checked)}
               />
               <span>
@@ -543,6 +583,19 @@ function App() {
           )}
           <div className="sidebar-rule" />
           <h2>Browse library</h2>
+          <button
+            className={"nav-row " + (query.kind === "unique" ? "active" : "")}
+            onClick={() => filter({ kind: "unique" })}
+          >
+            <Files size={17} />
+            <span>Unique files</span>
+          </button>
+          {query.kind === "unique" && (
+            <p className="tiny muted">
+              Only hash-confirmed copies are collapsed. Run Check duplicates or
+              prepare an asset library to verify contents.
+            </p>
+          )}
           <button
             className={
               "nav-row " + (!query.kind && !query.collection ? "active" : "")
@@ -596,6 +649,7 @@ function App() {
                 collection: "",
                 ...saved,
                 searchScope: saved.searchScope || "name",
+                family: saved.family || "",
               })
             }
             onRemove={(name) =>
@@ -616,6 +670,7 @@ function App() {
                 category: "",
                 search: "",
                 ext: "",
+                family: "",
                 tags: [],
                 excludeTags: [],
               })
@@ -666,20 +721,42 @@ function App() {
                   : "Find scattered models. See what belongs together."}
               </p>
             </div>
-            <Button
-              icon={Download}
-              onClick={() =>
-                run(async () => {
-                  const p = await api.exportCsv(query);
-                  if (p) setToast("Inventory exported to " + p);
-                })
-              }
-              disabled={!stats.total || busy}
-            >
-              Export list
-            </Button>
+            <div className="result-actions">
+              <Button
+                disabled={!stats.total || busy || running}
+                onClick={() => setModal("assets")}
+              >
+                Create asset library
+              </Button>
+              <Button
+                icon={Download}
+                onClick={() =>
+                  run(async () => {
+                    const p = await api.exportCsv(query);
+                    if (p) setToast("Inventory exported to " + p);
+                  })
+                }
+                disabled={!stats.total || busy}
+              >
+                Export list
+              </Button>
+            </div>
           </div>
           <div className="search-tools">
+            {catalogMode === "game" && (
+              <select
+                aria-label="File family"
+                value={query.family || ""}
+                onChange={(e) => filter({ family: e.target.value })}
+              >
+                <option value="">All file families</option>
+                {(stats.families || []).map((f) => (
+                  <option key={f.family} value={f.family}>
+                    {f.family} ({count(f.count)})
+                  </option>
+                ))}
+              </select>
+            )}
             <div className="search-box">
               <Search size={18} />
               <input
@@ -713,8 +790,8 @@ function App() {
             >
               <option value="">All formats</option>
               {stats.extensions.map((e) => (
-                <option key={e.ext} value={e.ext}>
-                  .{e.ext} ({e.count})
+                <option key={e.ext} value={e.ext || "(none)"}>
+                  {e.ext ? "." + e.ext : "No extension"} ({e.count})
                 </option>
               ))}
             </select>
@@ -1054,7 +1131,7 @@ function App() {
                           </button>
                         </td>
                         <td>
-                          <span className="extension">{r.ext}</span>
+                          <span className="extension">{r.ext || "none"}</span>
                         </td>
                         <td className="size-col">{bytes(r.size)}</td>
                         <td className="category-col">
@@ -1141,12 +1218,18 @@ function App() {
         </main>
         <aside className="inspector">
           <div className="inspector-heading">
-            <h2>Model inspector</h2>
+            <h2>
+              {catalogMode === "game" ? "File inspector" : "Model inspector"}
+            </h2>
             <Box size={18} />
           </div>
           {active ? (
             <>
-              <Preview ref={preview} file={active} onFacts={onFacts} />
+              {hasRasterPreview(active) ? (
+                <RasterPreview key={active.id} file={active} />
+              ) : (
+                <Preview ref={preview} file={active} onFacts={onFacts} />
+              )}
               <div className="inspector-body">
                 <span className="eyebrow">{active.family}</span>
                 <h2 className="model-title">{active.name}</h2>
@@ -1222,9 +1305,17 @@ function App() {
                   disabled={busy || running}
                   onSave={(values) => updateMetadata([active.id], values)}
                 />
-                <Button className="full" onClick={() => setModal("cost")}>
-                  Estimate printing cost
-                </Button>
+                {[
+                  "Mesh / scene",
+                  "Print instructions",
+                  "Print model / project",
+                  "CAD / source",
+                  "3D models",
+                ].includes(active.family) && (
+                  <Button className="full" onClick={() => setModal("cost")}>
+                    Estimate printing cost
+                  </Button>
+                )}
                 {active.ext === "stl" && (
                   <Button
                     className="full mesh-button"
@@ -1519,6 +1610,23 @@ function App() {
               Apply library details
             </Button>
           </div>
+        </Modal>
+      )}
+      {modal === "assets" && (
+        <Modal
+          title="Create a unique asset library"
+          wide
+          canClose={!running}
+          onClose={() => {
+            if (!running) setModal(null);
+          }}
+        >
+          <AssetLibrary
+            query={query}
+            running={running}
+            progress={progress}
+            onError={setToast}
+          />
         </Modal>
       )}
       {modal === "cost" && active && (

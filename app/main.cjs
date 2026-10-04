@@ -42,6 +42,7 @@ let win,
   jobState = null,
   plan = null,
   transferring = false,
+  assetPlan = null,
   apiKey = "";
 const progress = (data) => {
   jobState = data;
@@ -81,8 +82,31 @@ else
   app.whenReady().then(async () => {
     await fsp.mkdir(app.getPath("userData"), { recursive: true });
     catalog = new Catalog(path.join(app.getPath("userData"), "catalog.sqlite"));
-    protocol.handle("scout", (request) => {
+    protocol.handle("scout", async (request) => {
       const url = new URL(request.url);
+      if (
+        url.hostname === "app" &&
+        /^\/image\/[a-f0-9]{64}$/.test(url.pathname)
+      ) {
+        const image = catalog.get(url.pathname.split("/").pop());
+        const mime = {
+          png: "image/png",
+          jpg: "image/jpeg",
+          jpeg: "image/jpeg",
+          webp: "image/webp",
+          gif: "image/gif",
+          bmp: "image/bmp",
+        }[image?.ext];
+        if (!mime || image.size > 8 * 1024 ** 2)
+          return new Response("Image preview unavailable", { status: 413 });
+        try {
+          return new Response(await readRow(image), {
+            headers: { "Content-Type": mime, "Cache-Control": "no-store" },
+          });
+        } catch {
+          return new Response("Source changed or unavailable", { status: 409 });
+        }
+      }
       if (
         url.hostname === "app" &&
         /^\/thumbnail\/[a-f0-9]{64}$/.test(url.pathname)
@@ -97,7 +121,7 @@ else
             })
           : new Response("Not found", { status: 404 });
       }
-      const root = path.join(__dirname, "..", "dist");
+      const root = path.join(__dirname, "..", "dist", app.getVersion());
       const target = path.resolve(
         root,
         "." +
@@ -183,6 +207,7 @@ else
       const previousScan = catalog.setting("lastScan");
       thumbnails.stop();
       plan = null;
+      assetPlan = null;
       scan(options, catalog, job.signal, progress)
         .catch((e) => {
           catalog.finishScan(true);
@@ -408,6 +433,62 @@ else
     });
     handle("reveal", (id) => {
       shell.showItemInFolder(row(id).path);
+    });
+    handle("assetPrepare", async (options, destination) => {
+      requireIdle();
+      job = new AbortController();
+      thumbnails.stop();
+      assetPlan = null;
+      try {
+        assetPlan = await require("./game-library.cjs").prepareLibrary(
+          catalog,
+          options || {},
+          destination,
+          job.signal,
+          progress,
+        );
+        return {
+          id: assetPlan.id,
+          directory: assetPlan.directory,
+          summary: assetPlan.summary,
+          preview: assetPlan.preview,
+        };
+      } catch (e) {
+        progress({
+          phase: "failed",
+          running: false,
+          message: e.message,
+          errorCount: 1,
+          errors: [{ path: destination, message: e.message }],
+        });
+        throw e;
+      } finally {
+        job = null;
+      }
+    });
+    handle("assetCopy", async (id) => {
+      requireIdle();
+      if (!assetPlan || assetPlan.id !== id)
+        throw new Error("Prepare and review an asset catalog first.");
+      job = new AbortController();
+      thumbnails.stop();
+      try {
+        return await require("./game-library.cjs").copyLibrary(
+          assetPlan,
+          job.signal,
+          progress,
+        );
+      } catch (e) {
+        progress({ phase: "failed", running: false, message: e.message });
+        throw e;
+      } finally {
+        job = null;
+      }
+    });
+    handle("revealAssetCatalog", (id) => {
+      if (!assetPlan || assetPlan.id !== id)
+        throw new Error("Prepare an asset catalog first.");
+      shell.showItemInFolder(path.join(assetPlan.directory, "START_HERE.md"));
     });
     handle("exportCsv", async (options) => {
       const { filePath, canceled } = await dialog.showSaveDialog(win, {

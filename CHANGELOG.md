@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.5.2
+
+- Add game-library scanning of all regular file types, including editor sources,
+  unknown extensions, documentation and extensionless files; retain model mode.
+- Add file-family and extensionless filters, saved family filters, local raster
+  previews and a unique-results view that respects current filters.
+- Prepare reviewed unique-file libraries with fresh SHA-256 hashes, a new
+  category/family organization, duplicate aliases, historical original paths,
+  collection provenance, category JSONL indexes and a Markdown entry point.
+- Copy unique assets with source/hash checks, exclusive targets, verification,
+  cancellation and copy journals; keep every original source file.
+- Flag maps, atlases and other reference-bearing files for review before game
+  use. Reference rewriting and source/editor conversion are not included.
+- Batch hash persistence and bound index writers for large libraries. Retain
+  generated build outputs instead of clearing the output directory on each build.
+- Split category indexes into 1,000-entry chunks and place unique assets in
+  hash-prefix subfolders to keep large collections navigable. Sanitize Windows
+  reserved folder names and package only current manifest outputs.
+- Retain duplicate aliases when preparing from the unique-results view, reject
+  destinations inside any scanned root, and restore catalog mode and roots after
+  cancelled or interrupted scans.
+
 ## 0.4.1
 
 - Search filenames by default, with explicit path and all-details scopes retained in saved searches, selection, and CSV exports.

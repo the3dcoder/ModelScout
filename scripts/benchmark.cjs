@@ -6,7 +6,7 @@ const { duplicates } = require("../app/files.cjs");
 (async () => {
   if (!process.argv[2] || process.argv[2].startsWith("--"))
     throw new Error(
-      "Usage: node scripts/benchmark.cjs <folder> [--duplicates]",
+      "Usage: node scripts/benchmark.cjs <folder> [--game] [--duplicates]",
     );
   const root = path.resolve(process.argv[2]);
   const output = path.resolve("artifacts", "benchmarks", String(Date.now()));
@@ -21,7 +21,11 @@ const { duplicates } = require("../app/files.cjs");
   try {
     let start = performance.now();
     receipt.scan = await scan(
-      { roots: [root], archives: false },
+      {
+        roots: [root],
+        archives: false,
+        mode: process.argv.includes("--game") ? "game" : "models",
+      },
       c,
       signal,
       () => {},
