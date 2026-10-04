@@ -68,5 +68,11 @@ Final 0.5.2 checks passed: `SCOUT_RETAIN_FIXTURES=1 npm test` (31), build,
 `npm run release:bundle`. The unsigned ZIP hash and packaged source/manifest
 bytes were independently checked. Preserve earlier local 0.5.0/0.5.1 candidates.
 
+Hosted checkpoint: paired runs on both initial heads disagree on the cancelled
+mode UI check: one passes while one times out waiting for the family selector.
+Core/build checks pass. Ten additional local game workflows and a renderer run
+at 6x CPU throttling pass. Progress/metadata failure diagnostics were added;
+investigate this race before treating hosted desktop validation as complete.
+
 See [README](README.md), [verification](docs/VERIFICATION.md) and
 [roadmap](docs/ROADMAP.md) for current product behavior and evidence boundaries.

@@ -39,7 +39,21 @@ const { fixture, zip } = require("./helpers.cjs");
   try {
     const page = await app.firstWindow(),
       errors = [];
+    if (process.env.SCOUT_TEST_CPU_RATE) {
+      const session = await page.context().newCDPSession(page);
+      await session.send("Emulation.setCPUThrottlingRate", {
+        rate: Number(process.env.SCOUT_TEST_CPU_RATE),
+      });
+    }
     page.on("pageerror", (e) => errors.push(e.message));
+    await page.evaluate(() => {
+      window.__scoutProgressTrace = [];
+      window.scout.onProgress((state) => {
+        window.__scoutProgressTrace.push(state);
+        if (window.__scoutProgressTrace.length > 20)
+          window.__scoutProgressTrace.shift();
+      });
+    });
     await page.getByLabel("Scan mode", { exact: true }).selectOption("game");
     await page.getByLabel("Folder or drive path").fill(source);
     await page
@@ -224,6 +238,19 @@ const { fixture, zip } = require("./helpers.cjs");
         root,
       }),
     );
+  } catch (error) {
+    const page = await app.firstWindow();
+    console.error(
+      JSON.stringify(
+        await page.evaluate(async () => ({
+          lastScan: (await window.scout.info()).lastScan,
+          progress: window.__scoutProgressTrace,
+          familyVisible: !!document.querySelector('[aria-label="File family"]'),
+          dialogs: document.querySelectorAll("dialog[open]").length,
+        })),
+      ),
+    );
+    throw error;
   } finally {
     await app.close();
   }
